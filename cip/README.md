@@ -233,8 +233,9 @@ could be folded into it.
 ### Acceptance Criteria
 
 - [ ] The metadata label is registered in CIP-10.
-- [ ] A tally implementation reads and counts records by the rules above, and
-      its code is public.
+- [x] A tally implementation reads and counts records by the rules above, and
+      its code is public: https://github.com/GS1973/voice-of-ada-holders
+      (Apache-2.0).
 - [x] Wallets from at least two different vendors have been shown to sign such
       a transaction on mainnet: Eternl, Gero, Lace, Typhon and VESPR, each with
       a real transaction on 2026-09-24.
@@ -245,7 +246,8 @@ could be folded into it.
       (https://voiceofadaholders.com), a site that lists the open governance
       actions, builds the transaction, and publishes a tally recountable from
       the chain. Live on mainnet since 2026-09-25.
-- [ ] Publish the code of the site and of the tally.
+- [x] Publish the code of the site and of the tally:
+      https://github.com/GS1973/voice-of-ada-holders, since 2026-09-25.
 - [ ] Register label `1695` in CIP-10 (in the pull request of this CIP).
 
 ## Copyright
