@@ -380,9 +380,10 @@ NEWS_MAX = 12
 def news(actions, records, tip_time, tip_epoch):
     """What happened on chain lately, newest first, for the ticker on the site:
     actions submitted, ratified, enacted, expired or dropped; open actions
-    closing soon; answers under label 1695 in the last day; the epoch that
-    began. Only events, never a choice of what matters: the chain sets the
-    agenda here too. The site writes the sentences, in both languages."""
+    closing soon; answers under label 1695 in the last day; when the current
+    epoch ends, and that it began during its first day. Only events, never a
+    choice of what matters: the chain sets the agenda here too. The site
+    writes the sentences, in both languages."""
     from datetime import datetime, timedelta
     tip = tip_time.replace(tzinfo=timezone.utc)
     since = tip - timedelta(days=NEWS_DAYS)
@@ -402,8 +403,10 @@ def news(actions, records, tip_time, tip_epoch):
     if recent:
         events.append({'time': iso(tip), 'kind': 'answers_day', 'count': len(recent)})
     began = epoch_start_iso(tip_epoch)
-    if at(began) >= since:
-        events.append({'time': began, 'kind': 'epoch', 'epoch': tip_epoch})
+    if tip - at(began) <= timedelta(days=1):
+        events.append({'time': began, 'kind': 'epoch_began', 'epoch': tip_epoch})
+    events.append({'time': iso(tip), 'kind': 'epoch_ends', 'epoch': tip_epoch,
+                   'ends_at': epoch_start_iso(tip_epoch + 1)})
     events.sort(key=lambda e: e['time'], reverse=True)
     return events[:NEWS_MAX]
 

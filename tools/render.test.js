@@ -46,13 +46,15 @@ console.log(`[${lang}] contact page ok`);
 const newsData = { ...data, news: [
   { time: data.tally.time, kind: 'submitted', action: data.actions[0].id },
   { time: data.tally.time, kind: 'answers_day', count: 3 },
-  { time: data.tally.time, kind: 'epoch', epoch: 657 },
+  { time: data.tally.time, kind: 'epoch_began', epoch: 657 },
+  { time: data.tally.time, kind: 'epoch_ends', epoch: 657, ends_at: '2026-09-26T21:44:51Z' },
   { time: data.tally.time, kind: 'unknown-kind' },
 ] };
 bodyHtml = '';
 api.drawTicker(newsData);
 if (!/New governance action|Nueva acción de gobernanza/.test(bodyHtml) || !/3 answers on chain|3 respuestas en la cadena/.test(bodyHtml)
-    || !/Epoch 657 has begun|Ha empezado la época 657/.test(bodyHtml)) throw new Error('ticker sentences missing');
+    || !/Epoch 657 has begun|Ha empezado la época 657/.test(bodyHtml)
+    || !/Epoch 657 ends Sep 26|La época 657 termina el 26 sept/.test(bodyHtml)) throw new Error('ticker sentences missing');
 if (!bodyHtml.includes(`href="/action?id=${encodeURIComponent(data.actions[0].id)}"`) || !bodyHtml.includes('tabindex="-1"')) throw new Error('ticker links wrong');
 bodyHtml = '';
 api.drawTicker({ ...data, news: [] });

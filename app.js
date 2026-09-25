@@ -70,7 +70,8 @@ const TEXT = {
       dropped: x => `Dropped: ${x.title}`,
       closing: x => `Answering closes ${x.when}: ${x.title}`,
       answers_day: x => x.count === 1 ? '1 answer on chain in the last 24 hours' : `${x.count} answers on chain in the last 24 hours`,
-      epoch: x => `Epoch ${x.epoch} has begun`,
+      epoch_began: x => `Epoch ${x.epoch} has begun`,
+      epoch_ends: x => `Epoch ${x.epoch} ends ${x.when}`,
     },
     menu: 'Menu', connect: 'Connect wallet', connectHeading: 'Connect your wallet', disconnect: 'Disconnect',
     connectNote: 'Connecting only reads your stake key, to show your answers and whether you can answer. Nothing is signed and it costs nothing. If your wallet has several accounts, the one active when you connect is used.',
@@ -270,7 +271,8 @@ const TEXT = {
       dropped: x => `Descartada: ${x.title}`,
       closing: x => `Se puede responder hasta el ${x.when}: ${x.title}`,
       answers_day: x => x.count === 1 ? '1 respuesta en la cadena en las últimas 24 horas' : `${x.count} respuestas en la cadena en las últimas 24 horas`,
-      epoch: x => `Ha empezado la época ${x.epoch}`,
+      epoch_began: x => `Ha empezado la época ${x.epoch}`,
+      epoch_ends: x => `La época ${x.epoch} termina el ${x.when}`,
     },
     menu: 'Menú', connect: 'Conectar billetera', connectHeading: 'Conecta tu billetera', disconnect: 'Desconectar',
     connectNote: 'Conectar solo lee tu clave de stake, para mostrar tus respuestas y si puedes responder. No se firma nada y no cuesta nada. Si tu billetera tiene varias cuentas, se usa la que está activa al conectar.',
@@ -1097,7 +1099,8 @@ function tickerItems(data) {
     const a = n.action ? byId[n.action] : null;
     const say = T.news[n.kind];
     if (!say || (n.action && !a)) return '';
-    const when = n.closes_at ? new Date(n.closes_at).toLocaleDateString(T.locale, { day: 'numeric', month: 'short' }) : '';
+    const when = n.closes_at ? new Date(n.closes_at).toLocaleDateString(T.locale, { day: 'numeric', month: 'short' })
+      : n.ends_at ? new Date(n.ends_at).toLocaleString(T.locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
     const text = say({ title: a ? esc(titleOf(a)) : '', count: n.count, epoch: n.epoch, when });
     return a ? `<a href="/action?id=${encodeURIComponent(a.id)}">${text}</a>` : `<span>${text}</span>`;
   }).filter(Boolean);
