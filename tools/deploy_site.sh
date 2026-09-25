@@ -11,4 +11,4 @@ FILES="index.html action.html how.html recount.html contact.html disclaimer.html
 [ -z "$(git status --porcelain -- $FILES)" ] || { echo "site files not committed"; exit 1; }
 rsync -aR --chmod=F644 $FILES "$SITE_HOST:$SITE_DIR/"
 ssh "$SITE_HOST" "cd $SITE_DIR && sha256sum $FILES" | sha256sum -c --quiet && echo "site = $(git log --format=%h -1)"
-curl -s -o /dev/null -w "through the domain: HTTP %{http_code}\n" https://voiceofadaholders.com/disclaimer.html
+curl -s -o /dev/null -w "through the domain: HTTP %{http_code}\n" https://voiceofadaholders.com/disclaimer
