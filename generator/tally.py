@@ -257,10 +257,10 @@ def light(out_path):
 
     actions = []
     for (gid, tx_hash, idx, gtype, expiration, ratified, enacted, dropped, expired,
-         submitted, tx_id, anchor_url, anchor_hash) in q(cur, """
+         submitted, submitted_time, tx_id, anchor_url, anchor_hash) in q(cur, """
         select g.id, encode(tx.hash, 'hex'), g.index, g.type::text, g.expiration,
                g.ratified_epoch, g.enacted_epoch, g.dropped_epoch, g.expired_epoch,
-               b.epoch_no, g.tx_id, va.url, encode(va.data_hash, 'hex')
+               b.epoch_no, b.time, g.tx_id, va.url, encode(va.data_hash, 'hex')
         from gov_action_proposal g
         join tx on tx.id = g.tx_id
         join block b on b.id = tx.block_id
@@ -299,6 +299,7 @@ def light(out_path):
             'title': '',
             'abstract': '',
             'submitted_epoch': submitted,
+            'submitted_at': submitted_time.replace(tzinfo=timezone.utc).isoformat().replace('+00:00', 'Z'),
             # db-sync's number for the proposal's transaction; a wallet may
             # answer if its registration has a lower one (elig/ files).
             'pos': tx_id,
@@ -354,6 +355,7 @@ def light(out_path):
         'eligible': {'credentials': len(reg_txs),
                      'ada': (snap['cum'][-1] // LOVELACE) if snap and snap['cum'] else None},
         'answers': answer_summary,
+        'news': news(actions, records, tip_time, tip_epoch),
         'eligibility': {'dir': 'elig', 'prefix': ELIG_PREFIX, 'keys': elig_count},
         'actions': actions,
     }
@@ -368,6 +370,42 @@ def light(out_path):
           f"{len(reg_txs)} wallets, ada from epoch {snap['epoch'] if snap else 'none'}; "
           f"answers: {answer_summary}; eligibility: {elig_count} keys, {elig_changed} files changed; "
           f"closed actions: {frozen}")
+
+
+NEWS_DAYS = 14          # how far back the ticker looks
+NEWS_CLOSING_DAYS = 3   # an open action closing within this many days is news
+NEWS_MAX = 12
+
+
+def news(actions, records, tip_time, tip_epoch):
+    """What happened on chain lately, newest first, for the ticker on the site:
+    actions submitted, ratified, enacted, expired or dropped; open actions
+    closing soon; answers under label 1695 in the last day; the epoch that
+    began. Only events, never a choice of what matters: the chain sets the
+    agenda here too. The site writes the sentences, in both languages."""
+    from datetime import datetime, timedelta
+    tip = tip_time.replace(tzinfo=timezone.utc)
+    since = tip - timedelta(days=NEWS_DAYS)
+    iso = lambda t: t.isoformat().replace('+00:00', 'Z')
+    at = lambda s_: datetime.fromisoformat(s_.replace('Z', '+00:00'))
+    events = []
+    for a in actions:
+        if at(a['submitted_at']) >= since:
+            events.append({'time': a['submitted_at'], 'kind': 'submitted', 'action': a['id']})
+        if a['status'] != 'open':
+            t = at(epoch_start_iso(a['status_epoch']))
+            if since <= t <= tip:
+                events.append({'time': iso(t), 'kind': a['status'], 'action': a['id']})
+        if a['answerable'] and at(a['closes_at']) - tip <= timedelta(days=NEWS_CLOSING_DAYS):
+            events.append({'time': iso(tip), 'kind': 'closing', 'action': a['id'], 'closes_at': a['closes_at']})
+    recent = [r for r in records if r['valid'] and at(r['time']) >= tip - timedelta(days=1)]
+    if recent:
+        events.append({'time': iso(tip), 'kind': 'answers_day', 'count': len(recent)})
+    began = epoch_start_iso(tip_epoch)
+    if at(began) >= since:
+        events.append({'time': began, 'kind': 'epoch', 'epoch': tip_epoch})
+    events.sort(key=lambda e: e['time'], reverse=True)
+    return events[:NEWS_MAX]
 
 
 RESULT_KEYS = ('eligible', 'heads', 'ada', 'groups', 'ada_epoch')

@@ -61,6 +61,17 @@ const TEXT = {
     speak: 'Let your voice be heard', sign: 'Sign with your wallet',
     alsoAnswer: 'Also answer another action',
     basketReady: n => n === 1 ? '1 answer ready' : `${n} answers ready`,
+    newsLabel: 'On chain',
+    news: {
+      submitted: x => `New governance action: ${x.title}`,
+      ratified: x => `Ratified: ${x.title}`,
+      enacted: x => `Enacted: ${x.title}`,
+      expired: x => `Expired: ${x.title}`,
+      dropped: x => `Dropped: ${x.title}`,
+      closing: x => `Answering closes ${x.when}: ${x.title}`,
+      answers_day: x => x.count === 1 ? '1 answer on chain in the last 24 hours' : `${x.count} answers on chain in the last 24 hours`,
+      epoch: x => `Epoch ${x.epoch} has begun`,
+    },
     menu: 'Menu', connect: 'Connect wallet', connectHeading: 'Connect your wallet', disconnect: 'Disconnect',
     connectNote: 'Connecting only reads your stake key, to show your answers and whether you can answer. Nothing is signed and it costs nothing. If your wallet has several accounts, the one active when you connect is used.',
     connectFirst: 'Connect your wallet (top right) to answer.',
@@ -250,6 +261,17 @@ const TEXT = {
     speak: 'Haz oír tu voz', sign: 'Firmar con tu billetera',
     alsoAnswer: 'Responder también a otra acción',
     basketReady: n => n === 1 ? '1 respuesta lista' : `${n} respuestas listas`,
+    newsLabel: 'En la cadena',
+    news: {
+      submitted: x => `Nueva acción de gobernanza: ${x.title}`,
+      ratified: x => `Ratificada: ${x.title}`,
+      enacted: x => `Promulgada: ${x.title}`,
+      expired: x => `Expirada: ${x.title}`,
+      dropped: x => `Descartada: ${x.title}`,
+      closing: x => `Se puede responder hasta el ${x.when}: ${x.title}`,
+      answers_day: x => x.count === 1 ? '1 respuesta en la cadena en las últimas 24 horas' : `${x.count} respuestas en la cadena en las últimas 24 horas`,
+      epoch: x => `Ha empezado la época ${x.epoch}`,
+    },
     menu: 'Menú', connect: 'Conectar billetera', connectHeading: 'Conecta tu billetera', disconnect: 'Desconectar',
     connectNote: 'Conectar solo lee tu clave de stake, para mostrar tus respuestas y si puedes responder. No se firma nada y no cuesta nada. Si tu billetera tiene varias cuentas, se usa la que está activa al conectar.',
     connectFirst: 'Conecta tu billetera (arriba a la derecha) para responder.',
@@ -1064,6 +1086,41 @@ function renderPage(page, data) {
   }
 }
 
+// The ticker along the bottom, as on a news channel: what happened on chain
+// lately (data.news, written by the generator). Nobody chooses the items. It
+// pauses under the pointer or keyboard focus, and stands still for readers
+// who ask their device for less motion. The run is drawn twice so that it
+// loops without a gap; the copy is hidden from screen readers and the tab key.
+function tickerItems(data) {
+  const byId = Object.fromEntries(data.actions.map(a => [a.id, a]));
+  return (data.news || []).map(n => {
+    const a = n.action ? byId[n.action] : null;
+    const say = T.news[n.kind];
+    if (!say || (n.action && !a)) return '';
+    const when = n.closes_at ? new Date(n.closes_at).toLocaleDateString(T.locale, { day: 'numeric', month: 'short' }) : '';
+    const text = say({ title: a ? esc(titleOf(a)) : '', count: n.count, epoch: n.epoch, when });
+    return a ? `<a href="/action?id=${encodeURIComponent(a.id)}">${text}</a>` : `<span>${text}</span>`;
+  }).filter(Boolean);
+}
+function drawTicker(data) {
+  document.querySelector('.ticker')?.remove();
+  const items = data ? tickerItems(data) : [];
+  document.body.classList[items.length ? 'add' : 'remove']('has-ticker');
+  if (!items.length) return;
+  const run = items.join('<span class="ticker-sep" aria-hidden="true">•</span>') + '<span class="ticker-sep" aria-hidden="true">•</span>';
+  const copy = run.replace(/<a /g, '<a tabindex="-1" ');
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="ticker" role="region" aria-label="${T.newsLabel}">
+      <span class="ticker-label">${T.newsLabel}</span>
+      <div class="ticker-window"><div class="ticker-track">
+        <div class="ticker-run">${run}</div><div class="ticker-run" aria-hidden="true">${copy}</div>
+      </div></div>
+    </div>`);
+  // About 60 pixels a second, whatever the length.
+  const first = document.querySelector('.ticker-run'), track = document.querySelector('.ticker-track');
+  if (first && track) track.style.animationDuration = Math.max(20, Math.round(first.scrollWidth / 60)) + 's';
+}
+
 function footer() {
   document.querySelector('main').insertAdjacentHTML('beforeend', `<footer>${T.footer}</footer>`);
 }
@@ -1077,6 +1134,7 @@ async function refresh(page, current) {
   await loadMine(data);
   const pruned = pruneBasket(data);
   renderPage(page, data);
+  drawTicker(data);
   drawBasket(pruned);
   footer();
   const stamp = document.querySelector('.tally-stamp');
@@ -1092,6 +1150,7 @@ async function boot(page) {
   const pruned = data ? pruneBasket(data) : [];
   renderPage(page, data);
   chrome(data);
+  drawTicker(data);
   drawBasket(pruned);
   const tick = async () => { data = await refresh(page, data); };
   setInterval(tick, REFRESH_MS);

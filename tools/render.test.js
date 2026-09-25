@@ -31,7 +31,7 @@ global.document = {
 };
 const loc = { search: '', pathname: '/', hash: '' };
 global.location = loc;
-const api = new Function(src + `; return { renderIndex, renderAction, renderContact, renderDisclaimer, renderRecount, pruneBasket, drawBasket, basket, openBasket,
+const api = new Function(src + `; return { renderIndex, renderAction, renderContact, renderDisclaimer, renderRecount, drawTicker, pruneBasket, drawBasket, basket, openBasket,
   setData: d => { DATA = d; }, setMine: m => { MINE = m; } };`)();
 
 api.renderIndex(data);
@@ -41,6 +41,23 @@ console.log(`[${lang}] ${data.actions.length} action pages ok`);
 api.renderContact();
 if (!html.includes('href="mailto:developmentbkind@gmail.com"')) throw new Error('contact page without the address');
 console.log(`[${lang}] contact page ok`);
+// The ticker: one sentence per event in this language, links to the actions,
+// the copy of the run out of the tab order; nothing drawn without news.
+const newsData = { ...data, news: [
+  { time: data.tally.time, kind: 'submitted', action: data.actions[0].id },
+  { time: data.tally.time, kind: 'answers_day', count: 3 },
+  { time: data.tally.time, kind: 'epoch', epoch: 657 },
+  { time: data.tally.time, kind: 'unknown-kind' },
+] };
+bodyHtml = '';
+api.drawTicker(newsData);
+if (!/New governance action|Nueva acción de gobernanza/.test(bodyHtml) || !/3 answers on chain|3 respuestas en la cadena/.test(bodyHtml)
+    || !/Epoch 657 has begun|Ha empezado la época 657/.test(bodyHtml)) throw new Error('ticker sentences missing');
+if (!bodyHtml.includes(`href="/action?id=${encodeURIComponent(data.actions[0].id)}"`) || !bodyHtml.includes('tabindex="-1"')) throw new Error('ticker links wrong');
+bodyHtml = '';
+api.drawTicker({ ...data, news: [] });
+if (/ticker/.test(bodyHtml)) throw new Error('ticker drawn without news');
+console.log(`[${lang}] ticker ok`);
 // Disclaimer: Spanish law; the open-source line and the recount page's
 // "published" only once SOURCE_URL is filled in, and then both.
 // Both cases whatever app.js carries: SOURCE_URL set to empty, then to an example.

@@ -198,6 +198,30 @@ h2.section { margin: 1.6rem 0 0.9rem 0; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 1.25rem; z-index: 60; max-width: calc(100% - 32px);
   background: var(--ink, #1a1a1a); color: #fff; padding: 0.7rem 1rem; border-radius: var(--radius); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2); font-size: 0.9rem; }
 .toast .link { color: #fff; }
+
+/* ---------- Ticker along the bottom (drawTicker in app.js) ---------- */
+.ticker {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; height: 2.3rem;
+  display: flex; align-items: stretch; background: var(--blue); color: #fff; font-size: 0.85rem;
+}
+.ticker-label {
+  flex: none; display: flex; align-items: center; padding: 0 0.9rem;
+  background: rgba(0, 0, 0, 0.25); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; font-size: 0.72rem;
+}
+.ticker-window { flex: 1; overflow: hidden; display: flex; align-items: center; }
+.ticker-track { display: flex; width: max-content; animation: ticker 60s linear infinite; }
+.ticker:hover .ticker-track, .ticker:focus-within .ticker-track { animation-play-state: paused; }
+.ticker-run { display: flex; align-items: center; white-space: nowrap; }
+.ticker-run a, .ticker-run span { color: #fff; padding: 0 0.6rem; }
+.ticker-run a:hover { text-decoration: underline; }
+.ticker-sep { opacity: 0.55; }
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track { animation: none; }
+  .ticker-window { overflow-x: auto; }
+}
+body.has-ticker { padding-bottom: 2.8rem; }
+body.has-ticker .toast { bottom: 3.3rem; }
 .link { background: none; border: 0; color: var(--blue); cursor: pointer; font: inherit; text-decoration: underline; padding: 0 0.3rem; }
 .basket-list { list-style: none; margin: 0.6rem 0 1rem; padding: 0; }
 .basket-list li { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; padding: 0.5rem 0; border-bottom: 1px solid var(--line); }
