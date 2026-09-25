@@ -216,8 +216,12 @@ h2.section { margin: 1.6rem 0 0.9rem 0; }
 .ticker-run a:hover { text-decoration: underline; }
 .ticker-sep { opacity: 0.55; }
 @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+/* Answering closes soon: white and red in turn, once a second */
+.ticker-run .ticker-alert { animation: ticker-alert 1s steps(1) infinite; }
+@keyframes ticker-alert { 0% { color: #fff; } 50% { color: #ff6b6b; } }
 @media (prefers-reduced-motion: reduce) {
   .ticker-track { animation: none; }
+  .ticker-run .ticker-alert { animation: none; color: #ff9d9d; }
   .ticker-window { overflow-x: auto; }
 }
 body.has-ticker { padding-bottom: 2.8rem; }

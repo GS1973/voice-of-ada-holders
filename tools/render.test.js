@@ -48,6 +48,7 @@ const newsData = { ...data, news: [
   { time: data.tally.time, kind: 'answers_day', count: 3 },
   { time: data.tally.time, kind: 'epoch_began', epoch: 657 },
   { time: data.tally.time, kind: 'epoch_ends', epoch: 657, ends_at: '2026-09-26T21:44:51Z' },
+  { time: data.tally.time, kind: 'closing', action: data.actions[0].id, closes_at: '2026-09-27T21:44:51Z' },
   { time: data.tally.time, kind: 'unknown-kind' },
 ] };
 bodyHtml = '';
@@ -56,6 +57,8 @@ if (!/New governance action|Nueva acción de gobernanza/.test(bodyHtml) || !/3 a
     || !/Epoch 657 has begun|Ha empezado la época 657/.test(bodyHtml)
     || !/Epoch 657 ends Sep 26|La época 657 termina el 26 sept/.test(bodyHtml)) throw new Error('ticker sentences missing');
 if (!bodyHtml.includes(`href="/action?id=${encodeURIComponent(data.actions[0].id)}"`) || !bodyHtml.includes('tabindex="-1"')) throw new Error('ticker links wrong');
+// Only the closing warning blinks and carries the sign, in the run and its copy.
+if ((bodyHtml.match(/class="ticker-alert"/g) || []).length !== 2 || (bodyHtml.match(/⚠ /g) || []).length !== 2) throw new Error('closing warning not marked');
 bodyHtml = '';
 api.drawTicker({ ...data, news: [] });
 if (/ticker/.test(bodyHtml)) throw new Error('ticker drawn without news');

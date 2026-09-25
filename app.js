@@ -1101,8 +1101,10 @@ function tickerItems(data) {
     if (!say || (n.action && !a)) return '';
     const when = n.closes_at ? new Date(n.closes_at).toLocaleDateString(T.locale, { day: 'numeric', month: 'short' })
       : n.ends_at ? new Date(n.ends_at).toLocaleString(T.locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-    const text = say({ title: a ? esc(titleOf(a)) : '', count: n.count, epoch: n.epoch, when });
-    return a ? `<a href="/action?id=${encodeURIComponent(a.id)}">${text}</a>` : `<span>${text}</span>`;
+    const alert = n.kind === 'closing';
+    const text = (alert ? '⚠ ' : '') + say({ title: a ? esc(titleOf(a)) : '', count: n.count, epoch: n.epoch, when });
+    const cls = alert ? ' class="ticker-alert"' : '';
+    return a ? `<a${cls} href="/action?id=${encodeURIComponent(a.id)}">${text}</a>` : `<span${cls}>${text}</span>`;
   }).filter(Boolean);
 }
 function drawTicker(data) {
