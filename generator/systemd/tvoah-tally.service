@@ -1,0 +1,11 @@
+[Unit]
+Description=The Voice of ADA Holders - tally, documents, translations, publish
+After=network-online.target
+
+[Service]
+Type=oneshot
+# DBSYNC_HOST, SITE_HOST, SITE_DIR, TVOAH_QWEN (see run_tally.sh)
+EnvironmentFile=%h/.config/tvoah/env
+ExecStart=%h/.local/opt/tvoah/current/run_tally.sh light
+TimeoutStartSec=20min
+Nice=10

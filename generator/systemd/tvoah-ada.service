@@ -1,0 +1,11 @@
+[Unit]
+Description=The Voice of ADA Holders - ADA per wallet, once per epoch
+After=network-online.target
+
+[Service]
+Type=oneshot
+# DBSYNC_HOST, SITE_HOST, SITE_DIR, TVOAH_QWEN (see run_tally.sh)
+EnvironmentFile=%h/.config/tvoah/env
+ExecStart=%h/.local/opt/tvoah/current/run_tally.sh ada
+TimeoutStartSec=60min
+Nice=10

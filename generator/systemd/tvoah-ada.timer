@@ -1,0 +1,10 @@
+[Unit]
+Description=The Voice of ADA Holders - check daily whether a new epoch needs an ADA snapshot
+
+[Timer]
+# At night; the run itself checks whether a new epoch has begun.
+OnCalendar=*-*-* 03:45:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
