@@ -56,6 +56,10 @@ neither registered nor used on mainnet.
 A transaction carries at most one record, the value under the label:
 
 ```cddl
+metadata = {
+  1695 => record
+}
+
 record = {
   0 => 1,                       ; format version
   1 => credential,              ; the answering stake credential
@@ -137,10 +141,13 @@ An answer in a valid record counts only if all of the following hold:
    ratified into that last epoch stays among the proposals until it is enacted
    an epoch later, but takes no votes in it, and no answers.
 3. **The credential was there first.** The stake credential of the record was
-   registered in the ledger state to which the transaction submitting the
-   action was applied, and stayed registered without interruption until the
-   closing time. For a tally taken while the action is still open, until the
-   point of the tally.
+   registered before the governance action was submitted, and stayed
+   registered without interruption from then until the action's closing time.
+   "Before" is exact: registered in the ledger state to which the transaction
+   submitting the action was applied, so a registration in that same
+   transaction or later does not count, even if the key stays registered. For
+   a tally taken while the action is still open, "until the closing time"
+   means until the point of the tally.
 
 Answers that fail these conditions are ignored individually; other answers in
 the same record still count.
@@ -151,6 +158,15 @@ For each pair of governance action and credential, only the latest answer
 counts. Order is the order of the chain: block number, then the position of the
 transaction in the block, then the position of the answer in the list at key `2`. A holder
 changes an answer by posting a new record before the closing time.
+
+### Recommendation for tools
+
+A tool that builds such a transaction SHOULD set its time-to-live
+(`invalid_hereafter`, transaction body field 3) no later than the earliest
+closing time among the actions it answers on, so that the ledger itself
+refuses an answer that could only arrive too late. Validity does not depend on
+it: an answer counts by the block that carries it (rule 2 above), never by a
+time the submitter states.
 
 ### Requirement on wallets
 
@@ -175,6 +191,16 @@ question.
 official vote can still be cast, and not after. A tally then describes what
 holders thought while the decision was still open.
 
+**Proof through `required_signers`, not a signature in the metadata.** The
+ledger itself refuses a transaction that lists a key hash in `required_signers`
+without a valid signature by that key. A reader therefore never verifies a
+signature: it only needs the transaction's `required_signers` next to its
+metadata, both part of the transaction body (in cardano-db-sync, the tables
+`extra_key_witness` and `tx_metadata`). A signature carried in the metadata
+would make every reader verify ed25519 itself, would need its own replay
+protection (the signed bytes must bind the record to its transaction), and
+would add about 100 bytes (key and signature) to every record. CIP-179 uses the same proof.
+
 **Registered before submission.** Only credentials that existed before an action
 was known can answer on it. Creating many credentials in response to a
 particular action is therefore not possible, and a registered credential costs
@@ -192,7 +218,10 @@ multisig answer needs signatures from several parties, which a single wallet
 cannot collect, and no tool for this CIP would support it. On 2026-09-25,
 2,093 of 1,466,142 registered stake credentials on mainnet (0.14%) were script
 credentials. Version 1 leaves them out; credential tag `1` is reserved for a
-later version.
+later version, which could accept native-script credentials proven as in
+CIP-179: `required_signers` listing key hashes that satisfy the script. A reader
+would then need the script itself as well (from the witness set or a reference
+script), which is why version 1 does not include it.
 
 **Ledger encodings.** Integer keys, the credential form, the action ID and the
 choice values follow the Conway ledger CDDL, so a tool can join answers with
@@ -238,7 +267,16 @@ could be folded into it.
       (Apache-2.0).
 - [x] Wallets from at least two different vendors have been shown to sign such
       a transaction on mainnet: Eternl, Gero, Lace, Typhon and VESPR, each with
-      a real transaction on 2026-09-24.
+      a real transaction on 2026-09-24. All answer transactions of that day,
+      including a few repeats and a test with NuFi, which the site does not offer:
+      `d285679b2c265bbeaee4a7498cffa33cbd8b411dc09d312dcc90aaf2452b34c4`,
+      `b8dbcf1fe82f278e4acc1cc5a4b38b9b5ee5ccfbf723f47ccc45d9e7009eb0d6`,
+      `5ca525eb67fcfd276661050f9aeb55fc0c84d5c7d04121b8061e0279ac7e00be`,
+      `bb86b35e142469f62a9773e4c793786f0a9e35fdf2eb7cb0682fd77f4c866da1`,
+      `76e1a30bdbce0fe9b8d3ec93a1c984f31a807b2f39ea5ddfe169bbb69ca9c96b`,
+      `ed9dc76b00cca304fa12dca55bc4a9ecb662b93712ca23c4d6f19d287004578b`,
+      `0891280f41b7dddf07f68d8987812f7d9433bd0d18829e1980228e9a409514bd`,
+      `b1188bdc4b80bcc274f040ce4f0dad63af867e91ce740c48d5ecdc9c3d2a23f1`.
 
 ### Implementation Plan
 
