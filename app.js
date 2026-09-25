@@ -69,7 +69,7 @@ const TEXT = {
     eligUnknown: 'Whether this wallet may answer on this action could not be checked just now. Reload the page in a moment; until then, answering is off.',
     eligUnknownShort: 'Could not check this wallet just now',
     notLanded: (v, link) => `Sent: ${v} (${link}), but it did not reach the chain before its time ran out, so it does not count. Answer again if you want it to.`,
-    noSuchAction: 'There is no governance action at this link. <a href="index.html">See all actions</a>.',
+    noSuchAction: 'There is no governance action at this link. <a href="/">See all actions</a>.',
     noData: 'The tally could not be loaded. Please reload the page in a moment.',
     onChain: (v, link) => `Your voice is already on chain: ${v} (${link})`, onChainCounted: 'counted',
     changeMind: 'Changed your mind? Choose again and sign: your new answer replaces this one. Until then, this one counts.', onChainNot: r => `not counted: ${r}`,
@@ -258,7 +258,7 @@ const TEXT = {
     eligUnknown: 'No se pudo comprobar ahora si esta billetera puede responder a esta acción. Vuelve a cargar la página en un momento; mientras tanto, responder está desactivado.',
     eligUnknownShort: 'No se pudo comprobar esta billetera ahora',
     notLanded: (v, link) => `Enviada: ${v} (${link}), pero no llegó a la cadena antes de que venciera su plazo, así que no cuenta. Responde de nuevo si quieres que cuente.`,
-    noSuchAction: 'No hay ninguna acción de gobernanza en este enlace. <a href="index.html">Ver todas las acciones</a>.',
+    noSuchAction: 'No hay ninguna acción de gobernanza en este enlace. <a href="/">Ver todas las acciones</a>.',
     noData: 'No se pudo cargar el recuento. Vuelve a cargar la página en un momento.',
     onChain: (v, link) => `Tu voz ya está en la cadena: ${v} (${link})`, onChainCounted: 'contada',
     changeMind: '¿Cambiaste de opinión? Elige de nuevo y firma: tu nueva respuesta reemplaza a esta. Hasta entonces, cuenta esta.', onChainNot: r => `no contada: ${r}`,
@@ -384,7 +384,11 @@ const TEXT = {
   },
 };
 
-const PAGES = ['index.html', 'how.html', 'recount.html', 'contact.html', 'disclaimer.html'];
+// Addresses without .html (the server maps /how to how.html and redirects the old ones).
+const PAGES = ['/', '/how', '/recount', '/contact', '/disclaimer'];
+// The page's own address as in PAGES, whether it was opened as /how or /how.html.
+const pagePath = () => location.pathname.replace(/\.html$/, '').replace(/^\/index$/, '/') || '/';
+const onIndex = () => pagePath() === '/';
 const CONTACT = 'developmentbkind@gmail.com';
 // Where the source code is published. Empty until it is: then the disclaimer
 // leaves out its open-source line and the recount page says it is not public.
@@ -429,11 +433,11 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 const rules = list => `<dl class="rules">${list.map(([t, d]) => `<dt>${t}</dt><dd>${d}</dd>`).join('')}</dl>`;
 
 function chrome(data) {
-  const here = location.pathname.split('/').pop() || 'index.html';
+  const here = pagePath();
   const stamp = data ? T.tally(fmt(data.tally.block), data.tally.epoch) : '';
   document.body.insertAdjacentHTML('afterbegin', `
     <header class="topbar">
-      <a class="brand" href="index.html">
+      <a class="brand" href="/">
         <span class="brand-mark"></span>
         <span class="brand-name">The Voice of ADA Holders</span>
         <span class="brand-sub">${T.sub}</span>
@@ -450,7 +454,7 @@ function chrome(data) {
       ${wallet() ? `<button class="btn ghost wallet-on" data-act="disconnect" title="${T.disconnect}">${esc(wallet().name)}<span class="wallet-stake"> · ${esc(shortStake(wallet().stake))}</span></button>`
         : `<button class="btn" data-act="connect">${T.connect}</button>`}
       <nav class="nav" id="nav">
-        ${PAGES.map((p, i) => `<a href="${p}" class="${here === p || (here === 'action.html' && i === 0) ? 'active' : ''}">${T.nav[i]}</a>`).join('')}
+        ${PAGES.map((p, i) => `<a href="${p}" class="${here === p || (here === '/action' && i === 0) ? 'active' : ''}">${T.nav[i]}</a>`).join('')}
       </nav>
     </header>`);
   footer();
@@ -527,7 +531,7 @@ function renderIndex(data) {
       ${b[a.id] ? `<p class="answered-tag">${T.yourAnswer(T[b[a.id]] || esc(b[a.id]))} · <span class="fine">${T.changeHint}</span></p>`
         : mineTag(a)}
       <div class="card-head">
-        <h2${langAttr(a)}>${b[a.id] ? esc(titleOf(a)) : `<a href="action.html?id=${encodeURIComponent(a.id)}">${esc(titleOf(a))}</a>`}</h2>
+        <h2${langAttr(a)}>${b[a.id] ? esc(titleOf(a)) : `<a href="/action?id=${encodeURIComponent(a.id)}">${esc(titleOf(a))}</a>`}</h2>
         <span class="tag">${esc(typeName(a))}</span>
         <span class="spacer"></span>
         <span class="meta num">${status(a)}</span>
@@ -536,7 +540,7 @@ function renderIndex(data) {
       <p class="turnout num">${turnout(a)}</p>
     </div>`).join('');
   const rows = closed.map(a => `
-    <tr><td${langAttr(a)}><a href="action.html?id=${encodeURIComponent(a.id)}">${esc(titleOf(a))}</a></td>
+    <tr><td${langAttr(a)}><a href="/action?id=${encodeURIComponent(a.id)}">${esc(titleOf(a))}</a></td>
       <td>${esc(typeName(a))}</td><td class="r num"><span class="wide-only">${a.submitted_epoch}</span><span class="narrow-only">${T.submitted(a.submitted_epoch)}</span></td>
       <td class="num">${status(a)}</td></tr>`).join('');
   document.querySelector('main').innerHTML = `
@@ -577,11 +581,11 @@ function renderAction(data) {
   }).join('');
   document.querySelector('main').innerHTML = `
     ${exampleNotice(data)}
-    <p class="meta"><a href="index.html">${T.indexTitle}</a> / ${esc(titleOf(a))}</p>
+    <p class="meta"><a href="/">${T.indexTitle}</a> / ${esc(titleOf(a))}</p>
     <h1${langAttr(a)}>${esc(titleOf(a))}</h1>
     ${a.i18n && a.i18n[LANG] ? `<p class="meta">${SHOW_ORIGINAL
-      ? `${T.original} · <a href="action.html?id=${encodeURIComponent(a.id)}">${T.seeTranslation}</a>`
-      : `${T.machine} · <a href="action.html?id=${encodeURIComponent(a.id)}&orig=1">${T.seeOriginal}</a>`}</p>` : ''}
+      ? `${T.original} · <a href="/action?id=${encodeURIComponent(a.id)}">${T.seeTranslation}</a>`
+      : `${T.machine} · <a href="/action?id=${encodeURIComponent(a.id)}&orig=1">${T.seeOriginal}</a>`}</p>` : ''}
     <p class="meta num"><span class="tag">${esc(typeName(a))}</span>&nbsp; ${T.submitted(a.submitted_epoch)} · ${status(a)}</p>
     ${a.gov_action_id ? `<p class="meta mono">${T.govId}: ${esc(a.gov_action_id)}</p>` : ''}
     ${!a.title && T.titleWhy[a.title_status] ? `<p class="meta">${T.titleWhy[a.title_status]}</p>` : ''}
@@ -939,18 +943,18 @@ function choose(id, value) {
 function removeAnswer(id) {
   const b = basket(); delete b[id]; saveBasket(b);
   drawBasketList();
-  if (DATA && /index\.html$|\/$/.test(location.pathname)) { renderIndex(DATA); footer(); }
+  if (DATA && onIndex()) { renderIndex(DATA); footer(); }
   document.querySelectorAll(`.choice input`).forEach(i => { if (new URLSearchParams(location.search).get('id') === id) i.checked = false; });
 }
 function clearAnswers() {
   saveBasket({});
   drawBasketList();
   document.querySelectorAll('.choice input').forEach(i => { i.checked = false; });
-  if (DATA && /index\.html$|\/$/.test(location.pathname)) { renderIndex(DATA); footer(); }
+  if (DATA && onIndex()) { renderIndex(DATA); footer(); }
 }
 
 // Back to the overview, where the actions still without an answer can be chosen.
-function answerAnother() { location.href = 'index.html'; }
+function answerAnother() { location.href = '/'; }
 
 // An answer to an action that is no longer open cannot count: take it out and say so.
 function pruneBasket(data) {
@@ -1014,7 +1018,7 @@ function drawBasketList() {
       <div class="answer-actions"><button class="btn ghost" data-act="another">${T.alsoAnswer}</button></div>` : `
     <p class="fine">${T.basketReady(ids.length)}</p>
     <ul class="basket-list">${ids.map(id => `<li>
-      <a href="action.html?id=${encodeURIComponent(id)}">${esc(title(id))}</a>
+      <a href="/action?id=${encodeURIComponent(id)}">${esc(title(id))}</a>
       <span class="basket-choice">${T[b[id]] || esc(b[id])}</span>
       <button class="link" data-act="remove" data-arg="${esc(id)}">${T.remove}</button></li>`).join('')}</ul>
     ${all ? `<p class="fine">${T.allAnswered}</p>` : ''}

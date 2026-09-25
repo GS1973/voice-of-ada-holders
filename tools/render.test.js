@@ -29,7 +29,7 @@ global.document = {
   body: { insertAdjacentHTML: (w, v) => { bodyHtml += v; }, classList: { add() {}, remove() {} },
     appendChild: e => appended.push(e), style: {} },
 };
-const loc = { search: '', pathname: '/index.html', hash: '' };
+const loc = { search: '', pathname: '/', hash: '' };
 global.location = loc;
 const api = new Function(src + `; return { renderIndex, renderAction, renderContact, renderDisclaimer, renderRecount, pruneBasket, drawBasket, basket, openBasket,
   setData: d => { DATA = d; }, setMine: m => { MINE = m; } };`)();
@@ -119,6 +119,6 @@ if (!/answer ready|respuesta lista/.test(list) || !/Remove|Quitar/.test(list)) t
 loc.search = '?id=' + open.id; api.renderAction(data);
 if (!/value="yes" checked/.test(html)) throw new Error('stored answer not shown as chosen');
 api.renderIndex(data);
-if (html.includes(`href="action.html?id=${encodeURIComponent(open.id)}"`)) throw new Error('answered action still selectable on the overview');
+if (html.includes(`href="/action?id=${encodeURIComponent(open.id)}"`)) throw new Error('answered action still selectable on the overview');
 if (!/Your answer|Tu respuesta/.test(html)) throw new Error('answered tag missing');
 console.log(`[${lang}] basket ok: closed action removed, open answer kept, shown, and not selectable on the overview`);

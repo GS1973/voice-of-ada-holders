@@ -28,21 +28,21 @@ with sync_playwright() as p:
             fails += not ok; print(w, 'OK ' if ok else 'BAD', 'dialog', name, r)
             pg.screenshot(path=f"{OUT}/after_{w}_{name}.png"); pg.keyboard.press('Escape'); pg.wait_for_timeout(200)
         for lang in ('en', 'es'):
-            pg.goto(BASE + "/index.html"); pg.evaluate(f"localStorage.setItem('lang', '{lang}')")
+            pg.goto(BASE + "/"); pg.evaluate(f"localStorage.setItem('lang', '{lang}')")
             for page in ('index', 'how', 'recount', 'contact', 'disclaimer'):
-                pg.goto(BASE + f"/{page}.html"); pg.wait_for_timeout(1000); check(f'{lang} {page}')
+                pg.goto(BASE + ("/" if page == "index" else f"/{page}")); pg.wait_for_timeout(1000); check(f'{lang} {page}')
             for a in d['actions']:
                 if a['answerable'] or a['groups'] or a['id'] == DOC:
-                    pg.goto(BASE + f"/action.html?id={a['id']}"); pg.wait_for_timeout(800); check(f"{lang} action {a['id'][:8]}")
+                    pg.goto(BASE + f"/action?id={a['id']}"); pg.wait_for_timeout(800); check(f"{lang} action {a['id'][:8]}")
         pg.evaluate("localStorage.setItem('lang', 'en')")
-        pg.goto(BASE + "/index.html"); pg.wait_for_timeout(1000)
+        pg.goto(BASE + "/"); pg.wait_for_timeout(1000)
         pg.locator('table').last.scroll_into_view_if_needed(); pg.screenshot(path=f"{OUT}/after_{w}_closed.png")
         pg.click("button[data-act='connect']"); pg.wait_for_timeout(300); modal('connect')
         pg.evaluate(f"() => {{ localStorage.setItem('tvoah.wallet', JSON.stringify({{key:'eternl',name:'Eternl',stake:'{STAKE}'}})); localStorage.setItem('tvoah.answers.{STAKE}', JSON.stringify({{'{ACT}':'yes'}})); localStorage.setItem('tvoah.sign', 'on'); }}")
-        pg.goto(BASE + "/index.html"); pg.wait_for_timeout(1200); check('index with wallet')
+        pg.goto(BASE + "/"); pg.wait_for_timeout(1200); check('index with wallet')
         pg.click("#cart"); pg.wait_for_timeout(300); modal('basket')
         pg.click("#cart"); pg.wait_for_timeout(300); pg.click("button[data-act='sign']"); pg.wait_for_timeout(800); modal('sign')
-        pg.goto(BASE + f"/action.html?id={DOC}"); pg.wait_for_timeout(1200)
+        pg.goto(BASE + f"/action?id={DOC}"); pg.wait_for_timeout(1200)
         pg.click("button[data-act='doc']"); pg.wait_for_timeout(1200); modal('document')
         ctx.close()
     b.close()
