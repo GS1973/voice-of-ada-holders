@@ -174,6 +174,41 @@ To support this CIP, a wallet MUST sign a transaction with the stake key whose
 hash is listed in `required_signers`, when that key belongs to the wallet. With
 CIP-30 this is `signTx`.
 
+### A record on mainnet
+
+Transaction
+`ed9dc76b00cca304fa12dca55bc4a9ecb662b93712ca23c4d6f19d287004578b`, in block
+13983648 of 2026-09-24 20:34:24 UTC, carries this metadata (156 bytes; CBOR
+diagnostic notation):
+
+```
+{1695: {
+  0: 1,
+  1: [0, h'4d85d4526012e2b4aab72be47325ec86e04950b18591e83d4b326736'],
+  2: [
+    [[h'f6fd3678f12edc58dd8739560149fcdb0b8b6fc77a5f303d49c87c74d1fccb4c', 0], 1],
+    [[h'75e7882a8ef2bc39517bffbfb654e89f525def5a8364d81e11fc5facafc6dd9b', 0], 0],
+    [[h'418df5986f50547ec4a709f1a5bce6b850753ad6614c873386b7c953fee84a9f', 0], 0]
+  ]
+}}
+```
+
+Its `required_signers` lists `4d85d4526012e2b4aab72be47325ec86e04950b18591e83d4b326736`,
+the key hash in the credential, so the record is valid. It answers Yes on the
+info action `f6fd…cb4c#0` and No on `75e7…dd9b#0` (a parameter change) and
+`418d…4a9f#0` (a treasury withdrawal). All three were open (closing on
+2026-10-11 and 2026-10-21), and the key was registered before each was
+submitted, so all three answers count. Its `invalid_hereafter` (slot
+198722926) lies well before the earliest of those closing times.
+
+A changed answer: key `69322c15acfbeae4c5b6e70d74058165f5032147d52f6706935e275e`
+answered Yes on `f6fd…cb4c#0` in
+`d285679b2c265bbeaee4a7498cffa33cbd8b411dc09d312dcc90aaf2452b34c4` (block
+13983343) and No in
+`b8dbcf1fe82f278e4acc1cc5a4b38b9b5ee5ccfbf723f47ccc45d9e7009eb0d6` (block
+13983563); the No replaced the Yes. Each later record by that key replaces
+its answer again; the last one before the closing time counts.
+
 ### What this CIP does not define
 
 - How answers are weighed or presented. A tally may count credentials, stake,
@@ -267,16 +302,7 @@ could be folded into it.
       (Apache-2.0).
 - [x] Wallets from at least two different vendors have been shown to sign such
       a transaction on mainnet: Eternl, Gero, Lace, Typhon and VESPR, each with
-      a real transaction on 2026-09-24. All answer transactions of that day,
-      including a few repeats and a test with NuFi, which the site does not offer:
-      `d285679b2c265bbeaee4a7498cffa33cbd8b411dc09d312dcc90aaf2452b34c4`,
-      `b8dbcf1fe82f278e4acc1cc5a4b38b9b5ee5ccfbf723f47ccc45d9e7009eb0d6`,
-      `5ca525eb67fcfd276661050f9aeb55fc0c84d5c7d04121b8061e0279ac7e00be`,
-      `bb86b35e142469f62a9773e4c793786f0a9e35fdf2eb7cb0682fd77f4c866da1`,
-      `76e1a30bdbce0fe9b8d3ec93a1c984f31a807b2f39ea5ddfe169bbb69ca9c96b`,
-      `ed9dc76b00cca304fa12dca55bc4a9ecb662b93712ca23c4d6f19d287004578b`,
-      `0891280f41b7dddf07f68d8987812f7d9433bd0d18829e1980228e9a409514bd`,
-      `b1188bdc4b80bcc274f040ce4f0dad63af867e91ce740c48d5ecdc9c3d2a23f1`.
+      a real transaction on 2026-09-24 (listed in the Appendix).
 
 ### Implementation Plan
 
@@ -287,6 +313,24 @@ could be folded into it.
 - [x] Publish the code of the site and of the tally:
       https://github.com/GS1973/voice-of-ada-holders, since 2026-09-25.
 - [ ] Register label `1695` in CIP-10 (in the pull request of this CIP).
+
+## Appendix
+
+### Answer transactions of 2026-09-24
+
+All answer transactions of the wallet tests, in chain order, including a few
+repeats and a test with NuFi, which the site does not offer:
+
+| Block | Transaction |
+|---|---|
+| 13983343 | `d285679b2c265bbeaee4a7498cffa33cbd8b411dc09d312dcc90aaf2452b34c4` |
+| 13983563 | `b8dbcf1fe82f278e4acc1cc5a4b38b9b5ee5ccfbf723f47ccc45d9e7009eb0d6` |
+| 13983585 | `5ca525eb67fcfd276661050f9aeb55fc0c84d5c7d04121b8061e0279ac7e00be` |
+| 13983626 | `bb86b35e142469f62a9773e4c793786f0a9e35fdf2eb7cb0682fd77f4c866da1` |
+| 13983628 | `76e1a30bdbce0fe9b8d3ec93a1c984f31a807b2f39ea5ddfe169bbb69ca9c96b` |
+| 13983648 | `ed9dc76b00cca304fa12dca55bc4a9ecb662b93712ca23c4d6f19d287004578b` |
+| 13983682 | `0891280f41b7dddf07f68d8987812f7d9433bd0d18829e1980228e9a409514bd` |
+| 13983744 | `b1188bdc4b80bcc274f040ce4f0dad63af867e91ce740c48d5ecdc9c3d2a23f1` |
 
 ## Copyright
 
