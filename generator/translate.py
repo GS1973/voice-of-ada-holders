@@ -226,9 +226,7 @@ def run_model(texts, lang='es'):
         for r in res:
             o = tok.decode(r.sequences_ids[0], skip_special_tokens=True)
             o = re.sub(r'<think>.*?</think>', '', o, flags=re.S).strip()
-            for pat, rep_ in LANGS[lang]['after']:
-                o = pat.sub(rep_, o)
-            outs.append(o)
+            outs.append(apply_after(LANGS[lang]['after'], o))
     return outs
 
 
@@ -248,11 +246,19 @@ def restore_numbers(src, out):
 FOREIGN = re.compile(r'[\u0370-\u03ff\u0400-\u052f\u0590-\u06ff\u0900-\u0dff\u0e00-\u0eff\u1100-\u11ff\uac00-\ud7af]')
 
 
-def intact(src, out):
+def intact(src, out, lang='es'):
     """Every number, link, code span and hash of the original is in the
-    translation, and no letters of a foreign script were added."""
-    return (all(kept(k, out) for k in KEEP.findall(src)) and '{{' not in out
-            and all(c in src for c in FOREIGN.findall(out)))
+    translation, and no letters of a foreign script were added. Amounts with a
+    multiplier keep their value, however written (3 million, 300万), dollars do
+    not become yen, dates keep day, month and year, and Japanese has no
+    characters only Chinese uses. A number that is part of an amount with a
+    multiplier is checked by its value, not letter for letter."""
+    spans = magnitude_spans(src)
+    keep = [m.group(0) for m in KEEP.finditer(src) if not any(a <= m.start() < b for a, b in spans)]
+    return (all(kept(k, out) for k in keep) and '{{' not in out
+            and all(c in src for c in FOREIGN.findall(out))
+            and magnitudes_kept(src, out, lang) and currency_kept(src, out) and dates_kept(src, out, lang)
+            and (lang != 'ja' or japanese_script_ok(out)))
 
 
 def kept(k, out):
@@ -350,12 +356,269 @@ def japanese_enough(src, out):
     letters = len(re.findall(r'[A-Za-z]', out)) + len(JAPANESE.findall(out))
     return '\n' not in src.strip() and len(src) < 200 or len(JAPANESE.findall(out)) >= 0.25 * letters
 
+# ---------------------------------------------------------------------------
+# What three reviewers found again and again in the machine translations
+# (review of 26-09), checked or fixed here, so a new text does not bring the
+# same errors back.
+
+# Fixed after the model: terms and names the reviewers corrected throughout.
+MONTHS_ES = 'enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre'
+AFTER_ES_REVIEW = [
+    ('propulsor', 'proponente'),
+    ('**Pregunta de la tesorería:**', '**Solicitud a la tesorería:**'),
+    ('### Pregunta de Presupuesto Total', '### Solicitud de presupuesto total'),
+    ('**Pregunta:**', '**Solicitud:**'), ('Total de preguntas:', 'Solicitud total:'),
+    ('Los premios de staking', 'Las recompensas de staking'), ('los premios de staking', 'las recompensas de staking'),
+    ('establescoins', 'stablecoins'), ('Valor Total Atado', 'Valor Total Bloqueado'),
+    ('La comisión de parámetros', 'El Comité de Parámetros'),
+    ('Babel Tarifas', 'Babel Fees'), ('Input Output Investigación', 'Input Output Research'),
+    ('DEL ECOSISTEMA DE LA CADENA DE BLOCKCHAIN CARDANO', 'DEL ECOSISTEMA BLOCKCHAIN DE CARDANO'),
+    ('cadena blockchain', 'blockchain'), ('titulares de ADA', 'poseedores de ADA'),
+    ('intercambios centralizados', 'exchanges centralizados'), ('bifurcación dura', 'hard fork'),
+    ('La Fundación Cardano', 'La Cardano Foundation'), ('la Fundación Cardano', 'la Cardano Foundation'),
+    ('del Proyecto Catalyst', 'de Project Catalyst'), ('el Proyecto Catalyst', 'Project Catalyst'),
+    ('el proyecto Catalyst', 'Project Catalyst'), ('corrientes de trabajo', 'líneas de trabajo'),
+    ('Tesorería Cardano', 'Tesorería de Cardano'),
+    # 13 de febrero 2026, febrero 13, 2026 -> 13 de febrero de 2026
+    (re.compile(rf'\b({MONTHS_ES}) (\d{{1,2}}), (\d{{4}})'), r'\2 de \1 de \3'),
+    (re.compile(rf'\b({MONTHS_ES}),? (\d{{4}})'), r'\1 de \2'),
+    # y before an i-sound is e; e before anything else is y
+    (re.compile(r'(?<=\s)y (?=[hH]?[iíIÍ](?![aeouáéóú]))'), 'e '),
+    (re.compile(r'(?<=\s)e (?=[A-Za-zÁÉÓÚáéóúñ])(?![iíIÍ])(?![hH][iíIÍ])'), 'y '),
+]
+AFTER_JA = [
+    # Names stay in Latin letters; the model wrote five spellings of Cardano.
+    (re.compile('カーデナノ|カーデノ|カルダノ|カーディノー|カードノー'), 'Cardano'), ('Cardanoー', 'Cardano '),
+    (re.compile('ローブレース|ローブラス|ラヴラス|(?<!グ)ローブ'), 'Lovelace'),
+    (re.compile(r'Cardano ?ファウンデーション'), 'Cardano Foundation'),
+    (re.compile(r'Snek ?ファウンデーション|Snek財団'), 'Snek Foundation'),
+    (re.compile(r'Ensurable ?システム'), 'Ensurable Systems'),
+    (re.compile('ラボズ|ラボス'), ' Labs'), (re.compile(r'(?<=[a-zA-Z0-9)]) +Labs'), ' Labs'),
+    (re.compile('チェンハードフォーク|チェン ハードフォーク'), 'Chang ハードフォーク'),
+    # Terms of the glossary.
+    ('預金', 'デポジット'), ('監査士', '監査人'), ('責任感', '説明責任'), ('提議', '提案'),
+    (re.compile('メモープール|メモプール'), 'メンプール'), (re.compile('満杯度|満たし度'), '飽和度'),
+    (re.compile('中心化された取引所|中心化取引所'), '中央集権型取引所'),
+    ('交換所', '取引所'), ('安定通貨', 'ステーブルコイン'),
+    (re.compile('作業委員会|作業部(?!会)|作業グループ'), 'ワーキンググループ'),
+    (re.compile('デシルラライズド|デシラライズド|デセントラライズド'), '分散型'),
+    ('ベンダーの代わって', 'ベンダーに代わって'),
+    ('**トレジャリーの質問:**', '**トレジャリーへの要請額:**'), ('生産性レベル', '本番環境レベル'),
+    # Chinese words and characters in Japanese text.
+    ('宪', '憲'), ('资', '資'), ('准備', '準備'), ('端到端', 'エンドツーエンド'),
+    ('即用可能な', 'すぐに使える'), ('即用可能', 'すぐに使える'), ('過時した', '古くなった'),
+    ('持有者', '保有者'), ('維護', '保守'), ('策略', '戦略'), ('良性循環', '好循環'),
+    ('靶向的な', '対象を絞った'), ('靶向的', '対象を絞った'), ('人本設計', '人間中心設計'),
+    # Garbled katakana.
+    ('テイポ', '誤字'), ('ツールイング', 'ツーリング'), (re.compile('インデックスャー|インデックスラー'), 'インデクサー'),
+    ('ガーディレール', 'ガードレール'), ('メンテナントされて', 'メンテナンスされて'),
+]
+
+
+def apply_after(rules, text):
+    for pat, rep in rules:
+        text = text.replace(pat, rep) if isinstance(pat, str) else pat.sub(rep, text)
+    return text
+
+
+# Amounts with a multiplier. "3 million farmers" came back as 2030 millones
+# and 2030 名; "$20 million" as 20 億ドル (two billion). The value must match,
+# however it is written: 3 millones, 300万, 3M.
+NUM = r'\d(?:[\d,]*\d)?(?:\.\d+)?'
+UNIT_EN = {'thousand': 1e3, 'k': 1e3, 'K': 1e3, 'million': 1e6, 'mn': 1e6, 'M': 1e6,
+           'billion': 1e9, 'bn': 1e9, 'B': 1e9, 'trillion': 1e12, 'T': 1e12}
+UNIT_ES = {'mil millones': 1e9, 'millones': 1e6, 'millón': 1e6, 'billones': 1e12, 'billón': 1e12, 'mil': 1e3,
+           'bn': 1e9, 'k': 1e3, 'K': 1e3, 'M': 1e6, 'B': 1e9, 'T': 1e12}
+UNIT_JA = {'兆': 1e12, '億': 1e8, '千万': 1e7, '百万': 1e6, '万': 1e4, '千': 1e3}
+RANGE = r'(?:\s?[–\-〜～~]\s?)'
+# A single letter counts only straight after the number (5M, 10k), never in M1 or 6, M2.
+MAG_EN = re.compile(rf'({NUM})(?:{RANGE}({NUM}))?(\s?(?i:thousand|million|billion|trillion)|\s?(?:bn|mn)|[kKMBT])(?![A-Za-z0-9])')
+MAG_ES = re.compile(rf'({NUM})(?:{RANGE}({NUM}))?(\s?(?i:mil millones|millones|millón|billones|billón|mil)|\s?bn|[kKMBT])(?![A-Za-z0-9áéíóúñ])')
+MAG_JA = re.compile(rf'({NUM})\s?(兆|億|千万|百万|万|千)')
+
+
+def number(s):
+    """1,234.5 or 1,5 (a Spanish decimal comma): a comma before exactly three digits groups thousands."""
+    s = re.sub(r',(?=\d{3}(?!\d))', '', s)
+    return float(s.replace(',', '.'))
+
+
+def magnitudes(text, lang):
+    """The values of amounts with a multiplier; a range carries its unit to both ends."""
+    vals = []
+    for pat, units in ((MAG_EN, UNIT_EN),) if lang == 'en' else ((MAG_ES, UNIT_ES),) if lang == 'es' else ((MAG_EN, UNIT_EN),):
+        for m in pat.finditer(text):
+            w = m.group(3).strip()
+            u = units.get(w) or units[w.lower()]
+            vals += [number(m.group(1)) * u] + ([number(m.group(2)) * u] if m.group(2) else [])
+    if lang == 'ja':
+        prev_end, acc = None, 0.0
+        for m in MAG_JA.finditer(text):
+            v = number(m.group(1)) * UNIT_JA[m.group(2)]
+            if prev_end is not None and m.start() == prev_end:
+                acc += v              # 1億8,000万 is one amount
+                vals[-1] = acc
+            else:
+                acc = v
+                vals.append(v)
+                before = re.search(rf'({NUM}){RANGE}$', text[:m.start()])
+                if before:            # 10〜20億: the unit belongs to both ends
+                    vals.append(number(before.group(1)) * UNIT_JA[m.group(2)])
+            prev_end = m.end()
+    return vals
+
+
+def magnitude_spans(src):
+    """Where the numbers of amounts with a multiplier are, in the English."""
+    spans = []
+    for m in MAG_EN.finditer(src):
+        spans += [m.span(1)] + ([m.span(2)] if m.group(2) else [])
+    return spans
+
+
+def magnitudes_kept(src, out, lang):
+    got = magnitudes(out, lang)
+    return all(any(abs(g - v) <= 0.005 * v for g in got) for v in magnitudes(src, 'en'))
+
+
+# A dollar amount became yen: (0.19ドル/1,868,266円).
+# Only after an amount: 円 is also in 楕円 (ellipse) and 円滑 (smooth).
+OTHER_CURRENCY = [(re.compile(r'\d\s?円'), ('円', 'yen', 'JPY', '¥')),
+                  (re.compile(r'€|\d\s?euros?\b'), ('€', 'EUR', 'euro'))]
+
+
+def currency_kept(src, out):
+    return all(any(s in src for s in sources) for pat, sources in OTHER_CURRENCY if pat.search(out))
+
+
+# Dates. The Japanese model wrote 13月2026日 and 24 年 2025 月 for
+# 13 February 2026 and 24 April 2025.
+MONTHS_EN = {m: i + 1 for i, m in enumerate(('january', 'february', 'march', 'april', 'may', 'june', 'july',
+                                              'august', 'september', 'october', 'november', 'december'))}
+MONTHS_EN.update({m[:3]: i for m, i in list(MONTHS_EN.items())})
+MONTHS_EN['sept'] = 9
+MON_EN = '|'.join(sorted(MONTHS_EN, key=len, reverse=True))
+MON_ES = MONTHS_ES.split('|')
+DATE_EN = [re.compile(rf'\b({MON_EN})\.? (\d{{1,2}})(?:st|nd|rd|th)?,? (\d{{4}})\b', re.I),   # month day year
+           re.compile(rf'\b(\d{{1,2}})(?:st|nd|rd|th)? ({MON_EN})\.?,? (\d{{4}})\b', re.I),   # day month year
+           re.compile(rf'(?<![\d,] )\b({MON_EN})\.?,? (\d{{4}})\b', re.I)]                   # month year
+
+
+def dates(src):
+    found, taken = [], []
+    for i, pat in enumerate(DATE_EN):
+        for m in pat.finditer(src):
+            if any(a <= m.start() < b for a, b in taken):
+                continue
+            taken.append(m.span())
+            g = m.groups()
+            if i == 0:
+                found.append((int(g[2]), MONTHS_EN[g[0].lower()], int(g[1])))
+            elif i == 1:
+                found.append((int(g[2]), MONTHS_EN[g[1].lower()], int(g[0])))
+            else:
+                found.append((int(g[1]), MONTHS_EN[g[0].lower()], None))
+    return found
+
+
+def dates_kept(src, out, lang):
+    for y, m, d in dates(src):
+        if lang == 'ja':
+            ok = (re.search(rf'(?<!\d){m}\s?月\s?{d}\s?日', out) and re.search(rf'{y}\s?年', out)) if d \
+                else re.search(rf'{y}\s?年\s?{m}\s?月', out)
+        else:
+            mes = MON_ES[m - 1]
+            ok = (re.search(rf'(?<!\d){d} de {mes}\b', out, re.I) and str(y) in out) if d \
+                else re.search(rf'\b{mes},? (?:de |del )?{y}', out, re.I)
+        if not ok:
+            return False
+    return True
+
+
+# Characters Japanese does not have: the model fell back on simplified Chinese
+# (资産, 宪法). What Japanese writes is in the Shift-JIS set (cp932).
+HAN = re.compile(r'[㐀-鿿]')
+
+
+def japanese_script_ok(out):
+    for c in set(HAN.findall(out)):
+        try:
+            c.encode('cp932')
+        except UnicodeEncodeError:
+            return False
+    return True
+
+
+# A line that comes back as it went in was not translated: nine titles stayed
+# English without anyone noticing. Names and links alone may stay as they are.
+# In a title, where every word is capitalised, three common words are enough
+# (the title then keeps its original wording anyway). A line in an abstract
+# needs three common words in lower case, as any English sentence has (the,
+# for, with): a line of names (Cardano x Draper Dragon: Orion Fund) has none,
+# and must not send the whole abstract back to English.
+def untranslated(src, out, title=False):
+    if out.strip() != src.strip():
+        return False
+    text = re.sub(r'https?://\S+|`[^`]*`', ' ', src)
+    if title:
+        return sum(1 for w in re.findall(r'\b[A-Za-z]{3,}\b', text) if common_word(w)) >= 3
+    return sum(1 for w in re.findall(r'\b[a-z]{3,}\b', text) if common_word(w)) >= 3
+
+
+# Hard line breaks inside a paragraph. The Daedalus abstract has one every
+# seventy characters; translated line by line it was unreadable. A line that
+# does not end a sentence runs on into the next, unless that one starts a list
+# item, a heading, a table row, a quote or code, or ends in a Markdown break.
+BLOCK = re.compile(r'^\s*(?:[-*+]\s|\d+[.)]\s|#{1,6}\s|\||>|```)')
+
+
+def join_wrapped(text):
+    out = []
+    for line in text.split('\n'):
+        prev = out[-1] if out else ''
+        if (prev.strip() and line.strip() and not BLOCK.match(line) and not prev.endswith('  ')
+                and not re.match(r'^\s*(?:#{1,6}\s|\||```)', prev) and not re.search(r'[.!?:;。！？：]$', prev.rstrip())):
+            out[-1] = prev.rstrip() + ' ' + line.strip()
+        else:
+            out.append(line)
+    return '\n'.join(out)
+
+
+# Paragraphs that recur word for word (the two paragraphs of the Intersect
+# proposals) take the reviewed translation, so they read the same everywhere.
+def paragraph_memory(data, done):
+    mem, clash = {}, set()
+    for a in data['actions']:
+        r = done.get(a.get('anchor_hash'))
+        if not r or not a.get('abstract'):
+            continue
+        ep, tp = a['abstract'].split('\n\n'), r['abstract'].split('\n\n')
+        if len(ep) != len(tp):
+            continue
+        for e, t in zip(ep, tp):
+            e = e.strip()
+            if len(e) < 80:
+                continue          # headings and short items depend on their context
+            if e in mem and mem[e] != t:
+                clash.add(e)
+            mem.setdefault(e, t)
+    for e in clash:
+        mem.pop(e)
+    return mem
+
+
+def reuse(src, out, mem):
+    ep, op = src.split('\n\n'), out.split('\n\n')
+    if not mem or len(ep) != len(op):
+        return out
+    return '\n\n'.join(mem.get(e.strip(), o) for e, o in zip(ep, op))
+
 
 LANGS = {
-    'es': {'version': VERSION, 'system': SYSTEM, 'examples': EXAMPLES, 'after': AFTER,
+    'es': {'version': VERSION, 'system': SYSTEM, 'examples': EXAMPLES, 'after': AFTER + AFTER_ES_REVIEW,
            'already': looks_spanish, 'enough': None,
            'model': lambda: MODEL_DIR, 'model_env': 'TVOAH_QWEN'},
-    'ja': {'version': VERSION_JA, 'system': SYSTEM_JA, 'examples': EXAMPLES_JA, 'after': [],
+    'ja': {'version': VERSION_JA, 'system': SYSTEM_JA, 'examples': EXAMPLES_JA, 'after': AFTER_JA,
            'already': looks_japanese, 'enough': japanese_enough,
            'model': lambda: MODEL_DIR, 'model_env': 'TVOAH_QWEN'},
 }
@@ -365,6 +628,7 @@ def translate_texts(texts, titles=None, lang='es'):
     """Paragraph by paragraph, all texts in one stream so the GPU gets full
     batches: the model sees whole sentences with their context, and each text
     keeps its shape. A text with any paragraph not intact comes back as None."""
+    texts = [join_wrapped(t) for t in texts]
     jobs = [(ti, li, line) for ti, text in enumerate(texts)
             for li, line in enumerate(text.split('\n')) if line.strip()]
     titles = titles or [False] * len(texts)
@@ -375,9 +639,9 @@ def translate_texts(texts, titles=None, lang='es'):
     result = [text.split('\n') for text in texts]
     broken = set()
     for (ti, li, line), out in zip(jobs, outs):
-        if not out or not intact(line, out):
+        if not out or not intact(line, out, lang) or untranslated(line, out, titles[ti]):
             broken.add(ti)
-        result[ti][li] = out
+        result[ti][li] = re.match(r'[ \t]*', line).group(0) + (out or '').lstrip()   # nested lists keep their depth
     enough = LANGS[lang]['enough']
     return [None if ti in broken or not names_kept(texts[ti], '\n'.join(r), titles[ti])
             or (enough and not enough(texts[ti], '\n'.join(r))) else '\n'.join(r)
@@ -419,6 +683,7 @@ def translate_lang(data, lang):
     L = LANGS[lang]
     counts = {}
     done = reviewed(lang)
+    mem = paragraph_memory(data, done)
     cache_of = lambda a: os.path.join(CACHE, f"{a['anchor_hash']}.{L['version']}.{lang}.json")
     def put(a, tr):
         a.setdefault('i18n', {})[lang] = tr
@@ -434,13 +699,13 @@ def translate_lang(data, lang):
             with open(cache_of(a)) as f:
                 tr = json.load(f)
             if not (names_kept(a['title'], tr['title'], True) and names_kept(a['abstract'], tr['abstract'])
-                    and intact(a['title'], tr['title']) and intact(a['abstract'], tr['abstract'])):
+                    and intact(a['title'], tr['title'], lang) and intact(a['abstract'], tr['abstract'], lang)):
                 os.remove(cache_of(a))       # made before a check that refuses it now; translate again
                 todo.append(a)
                 continue
             for key in ('title', 'abstract'):
-                for pat, rep_ in L['after']:
-                    tr[key] = pat.sub(rep_, tr[key])
+                tr[key] = apply_after(L['after'], tr[key])
+            tr['abstract'] = reuse(a['abstract'], tr['abstract'], mem)
             put(a, tr)
             counts['cached'] = counts.get('cached', 0) + 1
         elif L['already'](a['title'] + ' ' + a['abstract']):
@@ -474,7 +739,7 @@ def translate_lang(data, lang):
                 counts['not_intact'] = counts.get('not_intact', 0) + 1
                 open(cache_of(a) + '.failed', 'w').close()
                 continue
-            tr = {'title': t, 'abstract': ab, 'model': L['version']}
+            tr = {'title': t, 'abstract': reuse(a['abstract'], ab, mem), 'model': L['version']}
             fd, tmp = tempfile.mkstemp(dir=CACHE)
             with os.fdopen(fd, 'w') as f:
                 json.dump(tr, f, ensure_ascii=False)
