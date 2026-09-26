@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The Voice of ADA Holders — Spanish machine translation of proposal texts.
+"""The Voice of ADA Holders: Spanish machine translation of proposal texts.
 
 Translates each verified title and abstract from English to Spanish with
 Qwen3-4B, int8, on ctranslate2 (the directory in TVOAH_QWEN), local on the GPU

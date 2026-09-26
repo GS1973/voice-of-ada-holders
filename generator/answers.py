@@ -1,4 +1,4 @@
-"""The Voice of ADA Holders — counting the answers under metadata label 1695.
+"""The Voice of ADA Holders: counting the answers under metadata label 1695.
 
 Applies the rules of the CIP draft (cip/README.md) to what db-sync holds:
 

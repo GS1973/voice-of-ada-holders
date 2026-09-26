@@ -1,5 +1,5 @@
 #!/bin/bash
-# The Voice of ADA Holders — one generator run.
+# The Voice of ADA Holders: one generator run.
 #
 #   run_tally.sh light   every quarter hour: actions, wallets, documents,
 #                        translations, publish data.json to the site

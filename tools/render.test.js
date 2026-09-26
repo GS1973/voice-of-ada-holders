@@ -71,7 +71,7 @@ const withSource = url => new Function(src.replace(/const SOURCE_URL = '[^']*';/
   + '; return { renderDisclaimer, renderRecount };')();
 const none = withSource('');
 none.renderDisclaimer();
-if (!/Spanish law applies|legislación española/.test(html) || /GitHub/.test(html)) throw new Error('disclaimer wrong without a source address');
+if (!/Spanish law applies|legislación española/.test(html) || !/sets no cookies|no usa cookies/.test(html) || /GitHub/.test(html)) throw new Error('disclaimer wrong without a source address');
 none.renderRecount();
 if (!/not public yet|aún no es público/.test(html)) throw new Error('recount page claims public code without an address');
 const pub = withSource('https://github.com/example/x');

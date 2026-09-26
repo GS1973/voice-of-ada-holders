@@ -1,4 +1,4 @@
-// The Voice of ADA Holders — signing the answers in the basket.
+// The Voice of ADA Holders: signing the answers in the basket.
 //
 // Builds one transaction carrying every answer under metadata label 1695, in
 // the record format of the CIP draft (cip/README.md), asks the wallet to sign

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The Voice of ADA Holders — proposal documents.
+"""The Voice of ADA Holders: proposal documents.
 
 Every governance action carries an anchor on chain: a URL and the blake2b-256
 hash of the document behind it. This step fetches each document, keeps it only

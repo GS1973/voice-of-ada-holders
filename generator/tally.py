@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The Voice of ADA Holders — tally generator.
+"""The Voice of ADA Holders: tally generator.
 
 Reads db-sync and writes the data.json the site renders. Everything it writes
 can be recounted from the chain; the tally states the block it was taken at.

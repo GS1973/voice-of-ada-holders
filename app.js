@@ -1,4 +1,4 @@
-// The Voice of ADA Holders — one script for the whole site.
+// The Voice of ADA Holders: one script for the whole site.
 // Every page has the same chrome (top bar + nav); only <main> differs.
 // Two languages, English and Spanish: every visible text lives in TEXT below,
 // so both languages always carry the same content.
@@ -114,7 +114,7 @@ const TEXT = {
     remove: 'Remove', clearAll: 'Clear all', allAnswered: 'You have an answer ready for every open action.',
     signFromBasket: 'Your choice goes into your answers, under “Your answers” at the top of the page. All of them are signed there together, with one signature.',
     yourAnswer: v => `Your answer: ${v}`, changeHint: 'To change it, remove it under “Your answers” at the top.',
-    basketPruned: t => `Removed from your answers: “${t}” — official voting on it has closed.`,
+    basketPruned: t => `Removed from your answers: “${t}”. Official voting on it has closed.`,
     whoCounts: 'Who counts',
     rulesShort: [
       ['Every stake credential', 'registered before this action was submitted, and still registered when it closes. No minimum amount, no DRep choice needed.'],
@@ -169,6 +169,7 @@ const TEXT = {
         ['Not an official vote', 'The Voice of ADA Holders shows what ADA holders answer. An answer has no effect on the outcome of any governance action, and nothing on this site is legal, financial or investment advice.'],
         ['Figures as they are', 'Every figure is read from the Cardano chain and can be recounted by anyone. We take care to count correctly, but we give no guarantee that the figures, titles, summaries or translations are complete, correct or current. Proposal documents are written by their proposers, not by us; machine translations can contain mistakes.'],
         ['Your wallet, your transaction', 'This site never holds your keys, never asks for your seed phrase, and never signs for you. You sign every transaction yourself, in your own wallet, and you pay its fee. A transaction on the chain is public and permanent; it cannot be withdrawn. Check what your wallet shows before you sign.'],
+        ['Privacy', 'This site sets no cookies, uses no analytics and loads nothing from third parties. It keeps no user data: your language, your connected wallet and your unsigned answers are stored in your own browser only, and never sent to us. The server keeps a standard access log (time, page, browser type; no IP addresses), deleted after about two weeks. Your answers themselves are public on the chain.'],
         ['Availability', 'The site may be changed, interrupted or taken offline at any time, without notice.'],
         ['Open source', u => `The source code of this site and of the program that counts the answers is published on GitHub (${u}), so that anyone can check how every figure is made.`],
         ['Liability', 'You use this site at your own risk. To the extent the law allows, we accept no liability for any loss or damage arising from its use, from the figures it shows, or from a transaction you sign.'],
@@ -315,7 +316,7 @@ const TEXT = {
     remove: 'Quitar', clearAll: 'Quitar todas', allAnswered: 'Tienes una respuesta lista para cada acción abierta.',
     signFromBasket: 'Tu elección pasa a tus respuestas, en “Tus respuestas” arriba en la página. Allí se firman todas juntas, con una sola firma.',
     yourAnswer: v => `Tu respuesta: ${v}`, changeHint: 'Para cambiarla, quítala en “Tus respuestas” arriba.',
-    basketPruned: t => `Quitada de tus respuestas: “${t}” — la votación oficial ya cerró.`,
+    basketPruned: t => `Quitada de tus respuestas: “${t}”. La votación oficial ya cerró.`,
     whoCounts: 'Quién cuenta',
     rulesShort: [
       ['Toda credencial de stake', 'registrada antes de que se presentara esta acción, y aún registrada cuando cierra. Sin cantidad mínima y sin necesidad de haber elegido un DRep.'],
@@ -370,6 +371,7 @@ const TEXT = {
         ['No es una votación oficial', 'The Voice of ADA Holders muestra lo que responden los poseedores de ADA. Una respuesta no tiene ningún efecto en el resultado de ninguna acción de gobernanza, y nada en este sitio es asesoramiento legal, financiero ni de inversión.'],
         ['Las cifras, tal como son', 'Cada cifra se lee de la cadena de Cardano y cualquiera puede recontarla. Ponemos cuidado en contar bien, pero no garantizamos que las cifras, los títulos, los resúmenes o las traducciones sean completos, correctos o actuales. Los documentos de las propuestas los escriben sus autores, no nosotros; las traducciones automáticas pueden contener errores.'],
         ['Tu billetera, tu transacción', 'Este sitio nunca guarda tus claves, nunca te pide tu frase semilla y nunca firma por ti. Tú firmas cada transacción en tu propia billetera y pagas su comisión. Una transacción en la cadena es pública y permanente; no se puede retirar. Comprueba lo que muestra tu billetera antes de firmar.'],
+        ['Privacidad', 'Este sitio no usa cookies ni analítica, y no carga nada de terceros. No guarda datos de usuarios: tu idioma, tu billetera conectada y tus respuestas sin firmar se guardan solo en tu propio navegador y nunca se nos envían. El servidor guarda un registro de accesos normal (hora, página, tipo de navegador; sin direcciones IP), que se borra al cabo de unas dos semanas. Tus respuestas en sí son públicas en la cadena.'],
         ['Disponibilidad', 'El sitio puede cambiar, interrumpirse o dejar de estar disponible en cualquier momento, sin previo aviso.'],
         ['Código abierto', u => `El código fuente de este sitio y del programa que cuenta las respuestas está publicado en GitHub (${u}), para que cualquiera pueda comprobar cómo se obtiene cada cifra.`],
         ['Responsabilidad', 'Usas este sitio bajo tu propio riesgo. En la medida en que la ley lo permita, no aceptamos ninguna responsabilidad por pérdidas o daños derivados de su uso, de las cifras que muestra o de una transacción que firmes.'],
@@ -436,7 +438,7 @@ document.documentElement.lang = LANG;
 
 const fmt = n => n.toLocaleString(T.locale);
 const ada = v => {
-  if (v === null || v === undefined) return '–';   // no ADA snapshot yet
+  if (v === null || v === undefined) return '-';   // no ADA snapshot yet
   const n = (x, d) => x.toLocaleString(T.locale, { minimumFractionDigits: d, maximumFractionDigits: d });
   // Spanish has no short word for a billion ("mil millones"), so it stays in millions.
   if (v >= 1e9 && LANG === 'en') return n(v / 1e9, 2) + 'B ADA';
