@@ -2,9 +2,9 @@
 """The Voice of ADA Holders: machine translation of proposal texts.
 
 Translates each verified title and abstract from English to Spanish, and to
-Japanese when asked, with Qwen3 on ctranslate2, local on the GPU (CPU
-fallback): Spanish with the 4B model in TVOAH_QWEN, Japanese with the 8B model
-in TVOAH_QWEN_JA (the 4B model dropped amounts and wrote Cyrillic in Japanese).
+Japanese when asked, with Qwen3-8B on ctranslate2 (the directory in TVOAH_QWEN),
+local on the GPU (CPU fallback). The 4B model before it made grammar mistakes in
+Spanish (del propuesta, la mantenimiento) and dropped amounts in Japanese.
 No outside service. Translations are cached by the document's on-chain hash,
 so each document is translated once. The site marks them as machine
 translation and always offers the original.
@@ -19,6 +19,11 @@ the grammar around them). What the prompt cannot guarantee is checked after:
 every number, link and code span of the original must come back unchanged, or
 the text stays in English. A Japanese text must also contain kana: a model
 that answers in English, or only copies names, is caught there.
+
+Translations that people reviewed are in reviewed/<lang>.json, keyed by the
+document's hash, and win over the model and the cache. A document that
+changes has another hash, so its old review no longer applies and the model
+translates it again.
 """
 import json
 import os
@@ -27,9 +32,8 @@ import sys
 import tempfile
 
 MODEL_DIR = os.path.expanduser(os.environ.get('TVOAH_QWEN', ''))   # required unless cache-only
-MODEL_DIR_JA = os.path.expanduser(os.environ.get('TVOAH_QWEN_JA', ''))
 CACHE = os.path.expanduser(os.environ.get('TVOAH_TRANSLATIONS', '~/.cache/tvoah/translations'))
-VERSION = 'qwen3-4b-int8-2'   # part of the Spanish cache key: change the prompt, change this
+VERSION = 'qwen3-8b-awq-es3'   # part of the Spanish cache key: change the prompt, change this
 VERSION_JA = 'qwen3-8b-awq-ja2'   # the same for Japanese
 MAX_TOKENS = 1536
 
@@ -50,9 +54,13 @@ stake -> stake (never "estake"); stake pool -> stake pool; stake pool operator (
 DRep -> DRep; wallet -> billetera; light wallet -> billetera ligera; non-custodial -> sin custodia;
 treasury -> tesorería; treasury withdrawal -> retiro de la tesorería; governance action -> acción de gobernanza;
 info action -> acción informativa; parameter change -> cambio de parámetros; protocol parameter -> parámetro del protocolo;
-Constitutional Committee -> Comité Constitucional; delegator -> delegador; on-chain -> en la cadena; hard fork -> hard fork.
+Constitutional Committee -> Comité Constitucional; delegator -> delegador; on-chain -> en la cadena; hard fork -> hard fork;
+Abstract -> Resumen; Motivation -> Motivación; Rationale -> Justificación; maintenance -> mantenimiento;
+Net Change Limit (NCL) -> límite de cambio neto (NCL); epoch -> época; budget -> presupuesto; audit -> auditoría.
 
-Write natural, correct Spanish: agreement and word order follow Spanish grammar, not the English original."""
+Write natural, correct Spanish: agreement and word order follow Spanish grammar, not the English original
+(de la propuesta, el mantenimiento, el ecosistema, el patrocinio, las épocas).
+In a title, translate every ordinary word, even when it is capitalised; keep only names in English."""
 
 # The examples carry placeholders, never real amounts: with an amount in an
 # example the model once filled a hidden 5,000,000 with this example's 11,787,063.
@@ -61,6 +69,10 @@ EXAMPLES = [
      "Reducir minPoolCost a {{N0}} ada"),
     ("Withdraw {{N0}} ada for the OpenZeppelin Stack administered by Intersect",
      "Retirar {{N0}} ada para el OpenZeppelin Stack administrado por Intersect"),
+    ("Withdraw {{N0}} for {{W1}} Maintenance and Development Platform administered by {{W2}}",
+     "Retirar {{N0}} para el mantenimiento y la plataforma de desarrollo de {{W1}}, administrado por {{W2}}"),
+    ("{{W0}} Treasury Withdrawal {{N1}}",
+     "Retiro de la tesorería para {{W0}} {{N1}}"),
     ("This Info Action asks Stake Pool Operators (SPOs), see [the poll]({{L0}}), whether they support raising `stakePoolTargetNum` (`k`).",
      "Esta acción informativa pregunta a los operadores de stake pool (SPO), ver [la encuesta]({{L0}}), si apoyan aumentar `stakePoolTargetNum` (`k`)."),
 ]
@@ -105,7 +117,7 @@ BECH32 = r'\b(?:gov_action|stake_test|stake|addr_test|addr|pool|drep_script|drep
 # a word (4 weeks -> cuatro semanas); a link ends before a closing bracket or
 # trailing punctuation.
 # The ada sign stays with its amount: the Japanese model wrote ₳ as ₡ (colón).
-KEEP = re.compile(r'`[^`\n]+`|https?://[^\s)\]]*[^\s)\].,;:]|' + BECH32 + r'|\b[0-9a-f]{16,}\b|₳\s?\d[\d,.]*\d|\d[\d,.]*\d')
+KEEP = re.compile(r'`[^`\n]+`|https?://[^\s)\]]*[^\s)\].,;:]|' + BECH32 + r'|\b[0-9a-f]{16,}\b|₳\s?\d(?:[\d,.]*\d)?|\d[\d,.]*\d')
 
 SPANISH = re.compile(r'\b(el|la|los|las|de|que|y|en|para|por|una|con|del|se)\b', re.I)
 
@@ -159,13 +171,18 @@ def prompt(text, lang='es'):
 
 
 # Fixed after the model, because it keeps writing them despite the prompt.
-AFTER = [(re.compile(r'\bestake'), 'stake'), (re.compile(r'\bEstake'), 'Stake')]   # also estakeados
+# Masculine nouns the model makes feminine next to a feminine one (la mantenimiento y mejora).
+MASC = r'(mantenimiento|patrocinio|ecosistema)'
+AFTER = [(re.compile(r'\bestake'), 'stake'), (re.compile(r'\bEstake'), 'Stake'),   # also estakeados
+         (re.compile(r'\bde la ' + MASC + r'\b'), r'del \1'), (re.compile(r'\ba la ' + MASC + r'\b'), r'al \1'),
+         (re.compile(r'\bla ' + MASC + r'\b'), r'el \1'), (re.compile(r'\bLa ' + MASC + r'\b'), r'El \1'),
+         (re.compile(r'\besta ' + MASC + r'\b'), r'este \1'), (re.compile(r'\buna ' + MASC + r'\b'), r'un \1')]
 
 # Numbers and links are taken out before the model sees them and put back after.
 # Left in, the model changed them: Epoch 713 became 710, a link to
 # explorer.cardano.org became explorer.cardcardano.org, and 11,787,063 ada
 # became 11,787,065. A single digit stays in, for the grammar.
-HIDE = re.compile(r'(?P<L>https?://[^\s)\]]*[^\s)\].,;:]|' + BECH32 + r')|(?P<N>₳\s?\d[\d,.]*\d|\d[\d,.]*\d)')
+HIDE = re.compile(r'(?P<L>https?://[^\s)\]]*[^\s)\].,;:]|' + BECH32 + r')|(?P<N>₳\s?\d(?:[\d,.]*\d)?|\d[\d,.]*\d)')
 PLACEHOLDER = re.compile(r'\{\{\s*([NLW])\s*(\d+)\s*\}\}')
 
 
@@ -254,6 +271,10 @@ def kept(k, out):
 NAME = re.compile(r'\b[A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*\b')
 SENTENCE_START = re.compile(r'(^|[.!?:]\s+|^\s*(?:[-*#>]+|\d+\.)\s+)$')
 LOWER = set()   # lower-case words in the prose of all proposals, set by main()
+# Names that also occur in lower case in the proposals, so the rarity test
+# passes them by, yet must never change: the Japanese model wrote Cardano in katakana.
+ALWAYS = ('Cardano', 'Intersect', 'Catalyst', 'EMURGO', 'IOG', 'Input Output', 'Plutus', 'Hydra',
+          'Mithril', 'Ouroboros')
 
 
 def set_prose(texts):
@@ -294,6 +315,7 @@ def names(text, title=False):
                 continue
             if not common_word(m.group(0)) and not compound_part(line, m):
                 found.add(m.group(0))
+    found.update(n for n in ALWAYS if re.search(r'\b' + re.escape(n) + r'\b', text))
     return found
 
 
@@ -335,7 +357,7 @@ LANGS = {
            'model': lambda: MODEL_DIR, 'model_env': 'TVOAH_QWEN'},
     'ja': {'version': VERSION_JA, 'system': SYSTEM_JA, 'examples': EXAMPLES_JA, 'after': [],
            'already': looks_japanese, 'enough': japanese_enough,
-           'model': lambda: MODEL_DIR_JA, 'model_env': 'TVOAH_QWEN_JA'},
+           'model': lambda: MODEL_DIR, 'model_env': 'TVOAH_QWEN'},
 }
 
 
@@ -385,15 +407,28 @@ def main(path):
     os.replace(tmp, path)
 
 
+def reviewed(lang):
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'reviewed', f'{lang}.json')
+    if not os.path.exists(path):
+        return {}
+    with open(path) as f:
+        return json.load(f)
+
+
 def translate_lang(data, lang):
     L = LANGS[lang]
     counts = {}
+    done = reviewed(lang)
     cache_of = lambda a: os.path.join(CACHE, f"{a['anchor_hash']}.{L['version']}.{lang}.json")
     def put(a, tr):
         a.setdefault('i18n', {})[lang] = tr
     todo = []
     for a in data['actions']:
         if not a.get('title') or a.get('title_status') != 'verified':
+            continue
+        if a['anchor_hash'] in done:
+            put(a, dict(done[a['anchor_hash']], model='reviewed'))
+            counts['reviewed'] = counts.get('reviewed', 0) + 1
             continue
         if os.path.exists(cache_of(a)):
             with open(cache_of(a)) as f:
@@ -430,6 +465,11 @@ def translate_lang(data, lang):
                                titles=[x for _ in group for x in (True, False)], lang=lang)
         for k, a in enumerate(group):
             t, ab = outs[2 * k], outs[2 * k + 1]
+            # A title that fails a check keeps its original wording: often it is
+            # nearly all names (IO: Hydra), and a good abstract is not thrown away for it.
+            if t is None and ab is not None:
+                t = a['title']
+                counts['title_kept'] = counts.get('title_kept', 0) + 1
             if t is None or ab is None:
                 counts['not_intact'] = counts.get('not_intact', 0) + 1
                 open(cache_of(a) + '.failed', 'w').close()

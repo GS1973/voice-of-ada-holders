@@ -1,6 +1,6 @@
 // Draw the overview and every action page against data.json, in one language,
 // as a browser would; then exercise the answer basket. Run before every deploy
-// of app.js:   DATA=path/to/live/data.json node tools/render.test.js en|es
+// of app.js:   DATA=path/to/live/data.json node tools/render.test.js en|es|ja
 const fs = require('fs');
 const path = require('path');
 const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
@@ -34,8 +34,26 @@ global.location = loc;
 const api = new Function(src + `; return { renderIndex, renderAction, renderContact, renderDisclaimer, renderRecount, drawTicker, pruneBasket, drawBasket, basket, openBasket,
   setData: d => { DATA = d; }, setMine: m => { MINE = m; } };`)();
 
+// Every language carries every text of the English one, of the same kind, and nothing else.
+{
+  const TX = new Function(src + '; return TEXT;')();
+  const leaves = (v, p, out) => {
+    if (typeof v === 'string' || typeof v === 'function') out.set(p, typeof v === 'function' ? 'fn' + v.length : 'str');
+    else if (Array.isArray(v)) v.forEach((x, i) => leaves(x, `${p}[${i}]`, out));
+    else for (const k of Object.keys(v)) leaves(v[k], p ? `${p}.${k}` : k, out);
+    return out;
+  };
+  const en = leaves(TX.en, '', new Map());
+  for (const l of Object.keys(TX)) {
+    const other = leaves(TX[l], '', new Map());
+    const bad = [...en].filter(([k, t]) => other.get(k) !== t).map(([k]) => k)
+      .concat([...other.keys()].filter(k => !en.has(k)));
+    if (bad.length) throw new Error(`language ${l} differs from English: ${bad.slice(0, 5).join(', ')}`);
+  }
+  console.log(`[${lang}] texts complete: ${Object.keys(TX).join(', ')}, ${en.size} each`);
+}
 api.renderIndex(data);
-console.log(`[${lang}] overview ok, ${html.length} chars, ${(html.match(/closes by|cierra a más tardar/g) || []).length} closing lines`);
+console.log(`[${lang}] overview ok, ${html.length} chars, ${(html.match(/closes by|cierra a más tardar|締切：/g) || []).length} closing lines`);
 for (const a of data.actions) { loc.search = '?id=' + a.id; api.renderAction(data); }
 console.log(`[${lang}] ${data.actions.length} action pages ok`);
 api.renderContact();
@@ -53,9 +71,9 @@ const newsData = { ...data, news: [
 ] };
 bodyHtml = '';
 api.drawTicker(newsData);
-if (!/New governance action|Nueva acción de gobernanza/.test(bodyHtml) || !/3 answers on chain|3 respuestas en la cadena/.test(bodyHtml)
-    || !/Epoch 657 has begun|Ha empezado la época 657/.test(bodyHtml)
-    || !/Epoch 657 ends Sep 26|La época 657 termina el 26 sept/.test(bodyHtml)) throw new Error('ticker sentences missing');
+if (!/New governance action|Nueva acción de gobernanza|新しいガバナンスアクション/.test(bodyHtml) || !/3 answers on chain|3 respuestas en la cadena|チェーン上で 3 件の回答/.test(bodyHtml)
+    || !/Epoch 657 has begun|Ha empezado la época 657|エポック 657 が始まりました/.test(bodyHtml)
+    || !/Epoch 657 ends Sep 26|La época 657 termina el 26 sept|エポック 657 は 9月26日/.test(bodyHtml)) throw new Error('ticker sentences missing');
 if (!bodyHtml.includes(`href="/action?id=${encodeURIComponent(data.actions[0].id)}"`) || !bodyHtml.includes('tabindex="-1"')) throw new Error('ticker links wrong');
 // Only the closing warning blinks and carries the sign, in the run and its copy.
 if ((bodyHtml.match(/class="ticker-alert"/g) || []).length !== 2 || (bodyHtml.match(/⚠ /g) || []).length !== 2) throw new Error('closing warning not marked');
@@ -71,14 +89,14 @@ const withSource = url => new Function(src.replace(/const SOURCE_URL = '[^']*';/
   + '; return { renderDisclaimer, renderRecount };')();
 const none = withSource('');
 none.renderDisclaimer();
-if (!/Spanish law applies|legislación española/.test(html) || !/sets no cookies|no usa cookies/.test(html) || /GitHub/.test(html)) throw new Error('disclaimer wrong without a source address');
+if (!/Spanish law applies|legislación española|スペイン法が適用されます/.test(html) || !/sets no cookies|no usa cookies|Cookie を使わず/.test(html) || /GitHub/.test(html)) throw new Error('disclaimer wrong without a source address');
 none.renderRecount();
-if (!/not public yet|aún no es público/.test(html)) throw new Error('recount page claims public code without an address');
+if (!/not public yet|aún no es público|まだ公開されていません/.test(html)) throw new Error('recount page claims public code without an address');
 const pub = withSource('https://github.com/example/x');
 pub.renderDisclaimer();
-if (!/GitHub \(<a href="https:\/\/github.com\/example\/x"/.test(html)) throw new Error('disclaimer without the open-source line once the address is set');
+if (!/GitHub ?[(（]<a href="https:\/\/github.com\/example\/x"/.test(html)) throw new Error('disclaimer without the open-source line once the address is set');
 pub.renderRecount();
-if (/not public yet|aún no es público/.test(html) || !html.includes('https://github.com/example/x')) throw new Error('recount page not switched to the address');
+if (/not public yet|aún no es público|まだ公開されていません/.test(html) || !html.includes('https://github.com/example/x')) throw new Error('recount page not switched to the address');
 console.log(`[${lang}] disclaimer ok: without a source address no open-source claim; with one, disclaimer and recount page both`);
 
 const isOpen = a => a.answerable ?? a.status === 'open';
@@ -87,43 +105,43 @@ const closed = data.actions.find(a => !isOpen(a));
 
 // A link to an action the tally does not have: said so, not another action shown.
 loc.search = '?id=' + 'ab'.repeat(32) + '-0'; api.renderAction(data);
-if (!/no governance action at this link|ninguna acción de gobernanza en este enlace/.test(html)) throw new Error('unknown action id not reported');
+if (!/no governance action at this link|ninguna acción de gobernanza en este enlace|このリンクにはガバナンスアクションがありません/.test(html)) throw new Error('unknown action id not reported');
 // A ratified action still in its ratified epoch takes answers: among the open ones.
 const ratified = { ...open, id: 'cd'.repeat(32) + '-0', status: 'ratified', status_epoch: data.tally.epoch, answerable: true };
 const withRatified = { ...data, actions: [...data.actions, ratified] };
 api.renderIndex(withRatified);
-const openPart = html.split(/Earlier actions|Acciones anteriores/)[0];
+const openPart = html.split(/Earlier actions|Acciones anteriores|過去のアクション/)[0];
 if (!openPart.includes(encodeURIComponent(ratified.id))) throw new Error('answerable ratified action not among the open ones');
 api.renderIndex({ ...data, actions: [...data.actions, { ...ratified, answerable: false }] });
-if (html.split(/Earlier actions|Acciones anteriores/)[0].includes(encodeURIComponent(ratified.id))) throw new Error('closed ratified action among the open ones');
+if (html.split(/Earlier actions|Acciones anteriores|過去のアクション/)[0].includes(encodeURIComponent(ratified.id))) throw new Error('closed ratified action among the open ones');
 console.log(`[${lang}] unknown id reported; ratified action open until its closing, closed after`);
 
 // No wallet connected: answering is closed, with a way to connect.
 loc.search = '?id=' + open.id; api.renderAction(data);
-if (!/value="yes" disabled/.test(html) || !/Connect your wallet|Conecta tu billetera/.test(html)) throw new Error('answering possible without a wallet');
+if (!/value="yes" disabled/.test(html) || !/Connect your wallet|Conecta tu billetera|ウォレットを接続してください/.test(html)) throw new Error('answering possible without a wallet');
 // A wallet registered after the action was submitted: cannot answer.
 const stake = 'ab'.repeat(28);
 store['tvoah.wallet'] = JSON.stringify({ key: 'mock', name: 'Mock', stake });
 api.setMine({ answers: {}, reg: open.pos + 1 });
 api.renderAction(data);
-if (!/value="yes" disabled/.test(html) || !/not registered before|no estaba registrada/.test(html)) throw new Error('ineligible wallet can answer');
+if (!/value="yes" disabled/.test(html) || !/not registered before|no estaba registrada|登録されていなかった/.test(html)) throw new Error('ineligible wallet can answer');
 // Registered before: can answer; an answer on the chain is shown.
 api.setMine({ answers: { [open.id]: { choice: 'no', tx: 'cd'.repeat(32), counted: true } }, reg: open.pos - 1 });
 api.renderAction(data);
-if (/value="yes" disabled/.test(html) || !/already on chain|ya está en la cadena/.test(html) || !/Changed your mind|Cambiaste de opinión/.test(html)) throw new Error('eligible wallet cannot answer, or its answer is not shown');
+if (/value="yes" disabled/.test(html) || !/already on chain|ya está en la cadena|すでにチェーン上にあります/.test(html) || !/Changed your mind|Cambiaste de opinión|考えが変わりましたか/.test(html)) throw new Error('eligible wallet cannot answer, or its answer is not shown');
 // Its eligibility file could not be read: answering off, and said why.
 api.setMine({ answers: {}, reg: undefined });
 api.renderAction(data);
-if (!/value="yes" disabled/.test(html) || !/could not be checked|No se pudo comprobar/.test(html)) throw new Error('unreadable eligibility lets the wallet answer');
+if (!/value="yes" disabled/.test(html) || !/could not be checked|No se pudo comprobar|確認できませんでした/.test(html)) throw new Error('unreadable eligibility lets the wallet answer');
 // Sent, and the tally passed the transaction's time-to-live without it: not landed.
 api.setMine({ answers: {}, reg: open.pos - 1 });
 api.setData(data);
 store['tvoah.sent'] = JSON.stringify([{ tx: 'ef'.repeat(32), at: data.tally.time, ttl: data.tally.slot + 100, stake, answers: { [open.id]: 'yes' } }]);
 api.renderAction(data);
-if (!/Sent: |Enviada: /.test(html) || /did not reach the chain|no llegó a la cadena/.test(html)) throw new Error('pending answer not shown as sent');
+if (!/Sent: |Enviada: |送信済み：/.test(html) || /did not reach the chain|no llegó a la cadena|チェーンに届かなかった/.test(html)) throw new Error('pending answer not shown as sent');
 store['tvoah.sent'] = JSON.stringify([{ tx: 'ef'.repeat(32), at: data.tally.time, ttl: data.tally.slot, stake, answers: { [open.id]: 'yes' } }]);
 api.renderAction(data);
-if (!/did not reach the chain|no llegó a la cadena/.test(html)) throw new Error('answer past its time-to-live still shown as sent');
+if (!/did not reach the chain|no llegó a la cadena|チェーンに届かなかった/.test(html)) throw new Error('answer past its time-to-live still shown as sent');
 delete store['tvoah.sent'];
 console.log(`[${lang}] wallet ok: none → connect first; registered after → cannot answer; registered before → answers, chain answer shown; unreadable → off; sent past ttl → not landed`);
 
@@ -134,13 +152,13 @@ api.drawBasket(pruned);
 const kept = Object.keys(api.basket());
 if (pruned.length !== 1 || kept.length !== 1 || kept[0] !== open.id) throw new Error('basket pruning wrong: ' + JSON.stringify({ pruned, kept }));
 if (cart.hidden || !/>1</.test(cart.innerHTML)) throw new Error('basket button in the top bar missing or wrong: ' + cart.innerHTML);
-if (!appended.some(e => e.className === 'toast' && /closed|cerró/.test(e.innerHTML))) throw new Error('no notice for the removed answer');
+if (!appended.some(e => e.className === 'toast' && /closed|cerró|締め切られました/.test(e.innerHTML))) throw new Error('no notice for the removed answer');
 api.openBasket();
 const list = appended.filter(e => e.className.includes('basket-modal')).pop().inner.innerHTML;
-if (!/answer ready|respuesta lista/.test(list) || !/Remove|Quitar/.test(list)) throw new Error('basket list wrong');
+if (!/answer ready|respuesta lista|件の回答を準備済み/.test(list) || !/Remove|Quitar|削除/.test(list)) throw new Error('basket list wrong');
 loc.search = '?id=' + open.id; api.renderAction(data);
 if (!/value="yes" checked/.test(html)) throw new Error('stored answer not shown as chosen');
 api.renderIndex(data);
 if (html.includes(`href="/action?id=${encodeURIComponent(open.id)}"`)) throw new Error('answered action still selectable on the overview');
-if (!/Your answer|Tu respuesta/.test(html)) throw new Error('answered tag missing');
+if (!/Your answer|Tu respuesta|あなたの回答/.test(html)) throw new Error('answered tag missing');
 console.log(`[${lang}] basket ok: closed action removed, open answer kept, shown, and not selectable on the overview`);
