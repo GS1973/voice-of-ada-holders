@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
-"""The Voice of ADA Holders: Spanish machine translation of proposal texts.
+"""The Voice of ADA Holders: machine translation of proposal texts.
 
-Translates each verified title and abstract from English to Spanish with
-Qwen3-4B, int8, on ctranslate2 (the directory in TVOAH_QWEN), local on the GPU
-(CPU fallback).
+Translates each verified title and abstract from English to Spanish, and to
+Japanese when asked, with Qwen3 on ctranslate2, local on the GPU (CPU
+fallback): Spanish with the 4B model in TVOAH_QWEN, Japanese with the 8B model
+in TVOAH_QWEN_JA (the 4B model dropped amounts and wrote Cyrillic in Japanese).
 No outside service. Translations are cached by the document's on-chain hash,
 so each document is translated once. The site marks them as machine
 translation and always offers the original.
 
-    translate.py DATA.json        (adds action.i18n.es = {title, abstract})
+    translate.py DATA.json        (adds action.i18n.<lang> = {title, abstract})
+
+The languages are those in TVOAH_LANGS (default "es"; "es ja" adds Japanese).
 
 A language model can be told what not to touch, so names, numbers, code and
 Cardano terms are handled in the prompt, not by placeholders (placeholders broke
 the grammar around them). What the prompt cannot guarantee is checked after:
 every number, link and code span of the original must come back unchanged, or
-the text stays in English.
+the text stays in English. A Japanese text must also contain kana: a model
+that answers in English, or only copies names, is caught there.
 """
 import json
 import os
@@ -23,8 +27,10 @@ import sys
 import tempfile
 
 MODEL_DIR = os.path.expanduser(os.environ.get('TVOAH_QWEN', ''))   # required unless cache-only
+MODEL_DIR_JA = os.path.expanduser(os.environ.get('TVOAH_QWEN_JA', ''))
 CACHE = os.path.expanduser(os.environ.get('TVOAH_TRANSLATIONS', '~/.cache/tvoah/translations'))
-VERSION = 'qwen3-4b-int8-2'   # part of the cache key: change the prompt, change this
+VERSION = 'qwen3-4b-int8-2'   # part of the Spanish cache key: change the prompt, change this
+VERSION_JA = 'qwen3-8b-awq-ja2'   # the same for Japanese
 MAX_TOKENS = 1536
 
 SYSTEM = """You translate written texts about Cardano governance from English into Spanish, for Spanish-speaking ADA holders in Latin America and Spain.
@@ -59,14 +65,51 @@ EXAMPLES = [
      "Esta acción informativa pregunta a los operadores de stake pool (SPO), ver [la encuesta]({{L0}}), si apoyan aumentar `stakePoolTargetNum` (`k`)."),
 ]
 
+SYSTEM_JA = """You translate written texts about Cardano governance from English into Japanese, for Japanese ADA holders.
+
+Output ONLY the Japanese translation. No preamble, no quotes, no notes, no alternatives, no romaji.
+Translate; never answer, summarise, shorten or add anything.
+
+Keep exactly as written, in Latin letters, untranslated and not in katakana:
+- names of people, projects, companies, products, events and organisations (Rare Evo, Input Output Research, OpenZeppelin, Intersect, Eternl)
+- every number and amount, with its own separators, and the unit ada
+- every placeholder such as {{N0}}, {{L0}} or {{W0}}, character for character: it stands for a number, a link or a name
+- anything in backticks, identifiers such as stakePoolTargetNum or treasury_withdrawal, links, hashes, CIP numbers
+- Markdown: **bold**, lists, headings
+
+Use these Japanese terms:
+governance action -> ガバナンスアクション; info action -> 情報アクション; parameter change -> パラメータ変更;
+protocol parameter -> プロトコルパラメータ; treasury -> トレジャリー; treasury withdrawal -> トレジャリーからの引き出し;
+Constitutional Committee -> 憲法委員会; hard fork -> ハードフォーク; DRep -> DRep; stake -> ステーク;
+stake pool -> ステークプール; stake pool operator (SPO) -> ステークプール運用者（SPO）; staking -> ステーキング;
+delegator -> 委任者; wallet -> ウォレット; epoch -> エポック; on-chain -> オンチェーン; ledger -> 台帳;
+Net Change Limit (NCL) -> ネット変更制限（NCL）; summit -> サミット; budget -> 予算; audit -> 監査.
+
+Write natural, plain Japanese. Sentences in the polite style (です／ます). A title stays a short title.
+Japanese punctuation 、。（） in Japanese text; ASCII inside code, links and numbers."""
+
+EXAMPLES_JA = [
+    ("Reduce minPoolCost to {{N0}} ada",
+     "minPoolCost を {{N0}} ada に引き下げる"),
+    ("Withdraw {{N0}} ada for the OpenZeppelin Stack administered by Intersect",
+     "Intersect が管理する OpenZeppelin Stack のために {{N0}} ada を引き出す"),
+    ("This Info Action asks Stake Pool Operators (SPOs), see [the poll]({{L0}}), whether they support raising `stakePoolTargetNum` (`k`).",
+     "この情報アクションは、ステークプール運用者（SPO）に、`stakePoolTargetNum`（`k`）の引き上げを支持するかどうかを尋ねるものです（[投票]({{L0}})を参照）。"),
+]
+
+# Bech32 identifiers: gov_action1..., stake1..., pool1..., drep1... The model
+# changed one letter of a gov_action id in two Spanish abstracts (j8 -> j4).
+BECH32 = r'\b(?:gov_action|stake_test|stake|addr_test|addr|pool|drep_script|drep|cc_hot|cc_cold|asset)1[02-9ac-hj-np-z]{6,}\b'
+
 # What must survive the translation unchanged. A single digit may come back as
 # a word (4 weeks -> cuatro semanas); a link ends before a closing bracket or
 # trailing punctuation.
-KEEP = re.compile(r'`[^`\n]+`|https?://[^\s)\]]*[^\s)\].,;:]|\b[0-9a-f]{16,}\b|\d[\d,.]*\d')
+# The ada sign stays with its amount: the Japanese model wrote ₳ as ₡ (colón).
+KEEP = re.compile(r'`[^`\n]+`|https?://[^\s)\]]*[^\s)\].,;:]|' + BECH32 + r'|\b[0-9a-f]{16,}\b|₳\s?\d[\d,.]*\d|\d[\d,.]*\d')
 
 SPANISH = re.compile(r'\b(el|la|los|las|de|que|y|en|para|por|una|con|del|se)\b', re.I)
 
-_engine = None
+_engines = {}
 
 
 def cuda_libs():
@@ -81,28 +124,37 @@ def cuda_libs():
                 break
 
 
-def engine():
-    global _engine
-    if _engine is None:
-        if not MODEL_DIR:
-            raise SystemExit("translate: set TVOAH_QWEN to the model directory")
+def engine(lang='es'):
+    """One model on the card at a time: another language's model is let go first."""
+    model_dir = LANGS[lang]['model']()
+    if model_dir not in _engines:
+        if not model_dir:
+            raise SystemExit(f"translate: set {LANGS[lang]['model_env']} to the model directory")
+        release()
         cuda_libs()
         import ctranslate2
         from tokenizers import Tokenizer
-        tok = Tokenizer.from_file(os.path.join(MODEL_DIR, 'tokenizer.json'))
+        tok = Tokenizer.from_file(os.path.join(model_dir, 'tokenizer.json'))
         try:
-            gen = ctranslate2.Generator(MODEL_DIR, device='cuda', compute_type='int8_float16')
+            gen = ctranslate2.Generator(model_dir, device='cuda', compute_type='int8_float16')
         except Exception as exc:
             print(f'translate: cuda unavailable ({exc}); using CPU')
-            gen = ctranslate2.Generator(MODEL_DIR, device='cpu', compute_type='int8')
-        _engine = (tok, gen)
-    return _engine
+            gen = ctranslate2.Generator(model_dir, device='cpu', compute_type='int8')
+        _engines[model_dir] = (tok, gen)
+    return _engines[model_dir]
 
 
-def prompt(text):
-    p = f"<|im_start|>system\n{SYSTEM}<|im_end|>\n"
-    for en, es in EXAMPLES:
-        p += f"<|im_start|>user\n{en}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n{es}<|im_end|>\n"
+def release():
+    import gc
+    _engines.clear()
+    gc.collect()
+
+
+def prompt(text, lang='es'):
+    L = LANGS[lang]
+    p = f"<|im_start|>system\n{L['system']}<|im_end|>\n"
+    for en, out in L['examples']:
+        p += f"<|im_start|>user\n{en}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n{out}<|im_end|>\n"
     return p + f"<|im_start|>user\n{text}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
 
 
@@ -113,7 +165,7 @@ AFTER = [(re.compile(r'\bestake'), 'stake'), (re.compile(r'\bEstake'), 'Stake')]
 # Left in, the model changed them: Epoch 713 became 710, a link to
 # explorer.cardano.org became explorer.cardcardano.org, and 11,787,063 ada
 # became 11,787,065. A single digit stays in, for the grammar.
-HIDE = re.compile(r'(?P<L>https?://[^\s)\]]*[^\s)\].,;:])|(?P<N>\d[\d,.]*\d)')
+HIDE = re.compile(r'(?P<L>https?://[^\s)\]]*[^\s)\].,;:]|' + BECH32 + r')|(?P<N>₳\s?\d[\d,.]*\d|\d[\d,.]*\d)')
 PLACEHOLDER = re.compile(r'\{\{\s*([NLW])\s*(\d+)\s*\}\}')
 
 
@@ -142,14 +194,14 @@ def show_numbers(text, kept):
 BATCH = 8    # paragraphs per GPU call; 16 and 32 ran the 16 GB card out of memory on long paragraphs
 
 
-def run_model(texts):
+def run_model(texts, lang='es'):
     """Translate many paragraphs in batches. Each may produce at most about twice
     its own length, so one runaway answer cannot hold a whole batch."""
-    tok, gen = engine()
+    tok, gen = engine(lang)
     outs = []
     for i in range(0, len(texts), BATCH):
         chunk = texts[i:i + BATCH]
-        batch = [tok.encode(prompt(t), add_special_tokens=False).tokens for t in chunk]
+        batch = [tok.encode(prompt(t, lang), add_special_tokens=False).tokens for t in chunk]
         limit = min(MAX_TOKENS, 2 * max(len(tok.encode(t).ids) for t in chunk) + 64)
         res = gen.generate_batch(batch, max_length=limit, sampling_temperature=0.0,
                                  include_prompt_in_result=False, end_token=['<|im_end|>'])
@@ -157,7 +209,7 @@ def run_model(texts):
         for r in res:
             o = tok.decode(r.sequences_ids[0], skip_special_tokens=True)
             o = re.sub(r'<think>.*?</think>', '', o, flags=re.S).strip()
-            for pat, rep_ in AFTER:
+            for pat, rep_ in LANGS[lang]['after']:
                 o = pat.sub(rep_, o)
             outs.append(o)
     return outs
@@ -174,9 +226,24 @@ def restore_numbers(src, out):
     return out
 
 
+# Letters of a script neither the original nor the target language uses: the
+# Japanese model once wrote "audit" as アудイト, half katakana, half Cyrillic.
+FOREIGN = re.compile(r'[\u0370-\u03ff\u0400-\u052f\u0590-\u06ff\u0900-\u0dff\u0e00-\u0eff\u1100-\u11ff\uac00-\ud7af]')
+
+
 def intact(src, out):
-    """Every number, link, code span and hash of the original is in the translation."""
-    return all(k in out for k in KEEP.findall(src)) and '{{' not in out
+    """Every number, link, code span and hash of the original is in the
+    translation, and no letters of a foreign script were added."""
+    return (all(kept(k, out) for k in KEEP.findall(src)) and '{{' not in out
+            and all(c in src for c in FOREIGN.findall(out)))
+
+
+def kept(k, out):
+    """An amount with the ada sign may have the sign after it, as Spanish writes it."""
+    if k.startswith('₳'):
+        n = k.lstrip('₳ ')
+        return any(v in out for v in ('₳' + n, '₳ ' + n, n + ' ₳', n + '₳'))
+    return k in out
 
 
 # Names. A capitalised word that is rare in English (wordfreq zipf < 3, also for
@@ -207,6 +274,17 @@ def common_word(w):
     return False
 
 
+def compound_part(line, m):
+    """Agri in Agri-Entrepreneurs: a plain capitalised word joined by a hyphen
+    to a common word is part of a compound the model may translate, not a name.
+    A word with capitals inside (OpenZeppelin-style, BitVM-powered) stays a name."""
+    if not re.fullmatch(r'[A-Z][a-z]+', m.group(0)):
+        return False
+    after = re.match(r'-([A-Za-z]+)', line[m.end():])
+    before = re.search(r'([A-Za-z]+)-$', line[:m.start()])
+    return bool(after and common_word(after.group(1)) or before and common_word(before.group(1)))
+
+
 def names(text, title=False):
     """In a title every word is capitalised, so none is skipped as a sentence start."""
     found = set()
@@ -214,7 +292,7 @@ def names(text, title=False):
         for m in NAME.finditer(line):
             if not title and SENTENCE_START.search(line[:m.start()]):
                 continue
-            if not common_word(m.group(0)):
+            if not common_word(m.group(0)) and not compound_part(line, m):
                 found.add(m.group(0))
     return found
 
@@ -235,7 +313,33 @@ def looks_spanish(text):
     return len(words) >= 8 and len(SPANISH.findall(text)) / len(words) > 0.18
 
 
-def translate_texts(texts, titles=None):
+KANA = re.compile(r'[\u3040-\u30ff]')
+JAPANESE = re.compile(r'[\u3040-\u30ff\u4e00-\u9fff]')
+
+
+def looks_japanese(text):
+    return len(JAPANESE.findall(text)) >= 8
+
+
+def japanese_enough(src, out):
+    """A Japanese translation has kana; an abstract is mostly Japanese script."""
+    if not KANA.search(out):
+        return False
+    letters = len(re.findall(r'[A-Za-z]', out)) + len(JAPANESE.findall(out))
+    return '\n' not in src.strip() and len(src) < 200 or len(JAPANESE.findall(out)) >= 0.25 * letters
+
+
+LANGS = {
+    'es': {'version': VERSION, 'system': SYSTEM, 'examples': EXAMPLES, 'after': AFTER,
+           'already': looks_spanish, 'enough': None,
+           'model': lambda: MODEL_DIR, 'model_env': 'TVOAH_QWEN'},
+    'ja': {'version': VERSION_JA, 'system': SYSTEM_JA, 'examples': EXAMPLES_JA, 'after': [],
+           'already': looks_japanese, 'enough': japanese_enough,
+           'model': lambda: MODEL_DIR_JA, 'model_env': 'TVOAH_QWEN_JA'},
+}
+
+
+def translate_texts(texts, titles=None, lang='es'):
     """Paragraph by paragraph, all texts in one stream so the GPU gets full
     batches: the model sees whole sentences with their context, and each text
     keeps its shape. A text with any paragraph not intact comes back as None."""
@@ -244,7 +348,7 @@ def translate_texts(texts, titles=None):
     titles = titles or [False] * len(texts)
     text_names = [names(text, titles[ti]) for ti, text in enumerate(texts)]
     hidden = [hide_numbers(line, text_names[ti]) for ti, _, line in jobs]
-    raw = run_model([h for h, _ in hidden])
+    raw = run_model([h for h, _ in hidden], lang)
     outs = [restore_numbers(line, show_numbers(out, kept)) for (_, _, line), (_, kept), out in zip(jobs, hidden, raw)]
     result = [text.split('\n') for text in texts]
     broken = set()
@@ -252,12 +356,14 @@ def translate_texts(texts, titles=None):
         if not out or not intact(line, out):
             broken.add(ti)
         result[ti][li] = out
-    return [None if ti in broken or not names_kept(texts[ti], '\n'.join(r), titles[ti]) else '\n'.join(r)
+    enough = LANGS[lang]['enough']
+    return [None if ti in broken or not names_kept(texts[ti], '\n'.join(r), titles[ti])
+            or (enough and not enough(texts[ti], '\n'.join(r))) else '\n'.join(r)
             for ti, r in enumerate(result)]
 
 
-def translate_text(text):
-    return translate_texts([text])[0]
+def translate_text(text, lang='es'):
+    return translate_texts([text], lang=lang)[0]
 
 
 def main(path):
@@ -265,27 +371,45 @@ def main(path):
         data = json.load(f)
     os.makedirs(CACHE, exist_ok=True)
     set_prose([x for a in data['actions'] if a.get('title') for x in (a['title'], a['abstract'])])
-    counts = {}
-    cache_of = lambda a: os.path.join(CACHE, f"{a['anchor_hash']}.{VERSION}.es.json")
-    todo = []
+    langs = os.environ.get('TVOAH_LANGS', 'es').split()
     for a in data['actions']:
         a.pop('i18n', None)
+    for lang in langs:
+        translate_lang(data, lang)
+
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(path)), prefix='.data-', suffix='.json')
+    with os.fdopen(fd, 'w') as f:
+        json.dump(data, f, ensure_ascii=False, indent=1)
+        f.write('\n')
+    os.chmod(tmp, 0o644)
+    os.replace(tmp, path)
+
+
+def translate_lang(data, lang):
+    L = LANGS[lang]
+    counts = {}
+    cache_of = lambda a: os.path.join(CACHE, f"{a['anchor_hash']}.{L['version']}.{lang}.json")
+    def put(a, tr):
+        a.setdefault('i18n', {})[lang] = tr
+    todo = []
+    for a in data['actions']:
         if not a.get('title') or a.get('title_status') != 'verified':
             continue
         if os.path.exists(cache_of(a)):
             with open(cache_of(a)) as f:
-                es = json.load(f)
-            if not (names_kept(a['title'], es['title'], True) and names_kept(a['abstract'], es['abstract'])):
-                os.remove(cache_of(a))       # made before the name check; translate again
+                tr = json.load(f)
+            if not (names_kept(a['title'], tr['title'], True) and names_kept(a['abstract'], tr['abstract'])
+                    and intact(a['title'], tr['title']) and intact(a['abstract'], tr['abstract'])):
+                os.remove(cache_of(a))       # made before a check that refuses it now; translate again
                 todo.append(a)
                 continue
             for key in ('title', 'abstract'):
-                for pat, rep_ in AFTER:
-                    es[key] = pat.sub(rep_, es[key])
-            a['i18n'] = {'es': es}
+                for pat, rep_ in L['after']:
+                    tr[key] = pat.sub(rep_, tr[key])
+            put(a, tr)
             counts['cached'] = counts.get('cached', 0) + 1
-        elif looks_spanish(a['title'] + ' ' + a['abstract']):
-            counts['already_spanish'] = counts.get('already_spanish', 0) + 1
+        elif L['already'](a['title'] + ' ' + a['abstract']):
+            counts['already_' + lang] = counts.get('already_' + lang, 0) + 1
         elif os.path.exists(cache_of(a) + '.failed'):
             # The model is deterministic: a text that failed the check fails again.
             counts['failed_before'] = counts.get('failed_before', 0) + 1
@@ -303,32 +427,25 @@ def main(path):
     for i in range(0, len(todo), 10):
         group = todo[i:i + 10]
         outs = translate_texts([x for a in group for x in (a['title'], a['abstract'])],
-                               titles=[x for _ in group for x in (True, False)])
+                               titles=[x for _ in group for x in (True, False)], lang=lang)
         for k, a in enumerate(group):
             t, ab = outs[2 * k], outs[2 * k + 1]
             if t is None or ab is None:
                 counts['not_intact'] = counts.get('not_intact', 0) + 1
                 open(cache_of(a) + '.failed', 'w').close()
                 continue
-            es = {'title': t, 'abstract': ab, 'model': VERSION}
+            tr = {'title': t, 'abstract': ab, 'model': L['version']}
             fd, tmp = tempfile.mkstemp(dir=CACHE)
             with os.fdopen(fd, 'w') as f:
-                json.dump(es, f, ensure_ascii=False)
+                json.dump(tr, f, ensure_ascii=False)
             os.replace(tmp, cache_of(a))
             counts['translated'] = counts.get('translated', 0) + 1
-        print(f'translate: {min(i + 10, len(todo))} of {len(todo)} documents', flush=True)
+        print(f'translate {lang}: {min(i + 10, len(todo))} of {len(todo)} documents', flush=True)
     for a in data['actions']:
-        if 'i18n' not in a and a.get('anchor_hash') and os.path.exists(cache_of(a)):
+        if lang not in a.get('i18n', {}) and a.get('anchor_hash') and os.path.exists(cache_of(a)):
             with open(cache_of(a)) as f:
-                a['i18n'] = {'es': json.load(f)}
-
-    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(path)), prefix='.data-', suffix='.json')
-    with os.fdopen(fd, 'w') as f:
-        json.dump(data, f, ensure_ascii=False, indent=1)
-        f.write('\n')
-    os.chmod(tmp, 0o644)
-    os.replace(tmp, path)
-    print('translations:', ', '.join(f'{k} {v}' for k, v in sorted(counts.items())))
+                put(a, json.load(f))
+    print(f'translations {lang}:', ', '.join(f'{k} {v}' for k, v in sorted(counts.items())))
 
 
 if __name__ == '__main__':
