@@ -92,5 +92,11 @@ mem = tr.paragraph_memory(data, {'h1': {'title': 't', 'abstract': 'Primer párra
 check('reviewed paragraph reused', tr.reuse('Other text.\n\n' + boiler, 'Otro texto.\n\nTexto de la máquina', mem),
       'Otro texto.\n\nTEXTO REVISADO')
 
+# A link or an ID the original does not have (a proposal can instruct the model).
+check('added link', tr.intact('Vote yes.', 'Vota sí en https://evil.example/claim.'), False)
+check('added www link', tr.intact('Vote yes.', 'Vota sí en www.evil.example.'), False)
+check('added pool id', tr.intact('Delegate.', 'Delega a pool1m83drqwlugdt9jn7jkz8hx3pne53acfkd539d9cj8yr92dr4k9y.'), False)
+check('link from the original', tr.intact('See https://x.org/a.', 'Ver https://x.org/a.'), True)
+
 print('translate checks:', 'all passed' if not fails else f'{fails} FAILED')
 raise SystemExit(1 if fails else 0)

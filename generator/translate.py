@@ -246,9 +246,16 @@ def restore_numbers(src, out):
 FOREIGN = re.compile(r'[\u0370-\u03ff\u0400-\u052f\u0590-\u06ff\u0900-\u0dff\u0e00-\u0eff\u1100-\u11ff\uac00-\ud7af]')
 
 
+# A link or an on-chain ID the model wrote itself: a proposal can carry
+# instructions for the model in its text, and then the translation could send
+# readers somewhere the original does not.
+ADDED = re.compile(r'https?://[^\s)\]]*[^\s)\].,;:]|www\.[^\s)\]]+|' + BECH32)
+
+
 def intact(src, out, lang='es'):
     """Every number, link, code span and hash of the original is in the
-    translation, and no letters of a foreign script were added. Amounts with a
+    translation, no link or on-chain ID was added that the original does not
+    have, and no letters of a foreign script were added. Amounts with a
     multiplier keep their value, however written (3 million, 300万), dollars do
     not become yen, dates keep day, month and year, and Japanese has no
     characters only Chinese uses. A number that is part of an amount with a
@@ -256,6 +263,7 @@ def intact(src, out, lang='es'):
     spans = magnitude_spans(src)
     keep = [m.group(0) for m in KEEP.finditer(src) if not any(a <= m.start() < b for a, b in spans)]
     return (all(kept(k, out) for k in keep) and '{{' not in out
+            and all(m.group(0) in src for m in ADDED.finditer(out))
             and all(c in src for c in FOREIGN.findall(out))
             and magnitudes_kept(src, out, lang) and currency_kept(src, out) and dates_kept(src, out, lang)
             and (lang != 'ja' or japanese_script_ok(out)))

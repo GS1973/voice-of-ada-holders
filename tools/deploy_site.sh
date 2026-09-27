@@ -7,7 +7,7 @@ set -euo pipefail
 [ -f ~/.config/tvoah/env ] && . ~/.config/tvoah/env
 : "${SITE_HOST:?set SITE_HOST}" "${SITE_DIR:?set SITE_DIR}"
 cd "$(dirname "$(readlink -f "$0")")/.."
-FILES="index.html action.html how.html recount.html contact.html disclaimer.html app.js sign.js styles.css vendor/blake2b.js"
+FILES="index.html action.html how.html recount.html contact.html disclaimer.html app.js sign.js styles.css vendor/blake2b.js .well-known/security.txt"
 [ -z "$(git status --porcelain -- $FILES)" ] || { echo "site files not committed"; exit 1; }
 rsync -aR --chmod=F644 $FILES "$SITE_HOST:$SITE_DIR/"
 ssh "$SITE_HOST" "cd $SITE_DIR && sha256sum $FILES" | sha256sum -c --quiet && echo "site = $(git log --format=%h -1)"
