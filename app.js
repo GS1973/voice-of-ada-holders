@@ -1061,9 +1061,18 @@ function renderContact() {
 // (docs/<hash>.json) and was only published there after its bytes matched the
 // hash on chain. The text is untrusted: every character is escaped first, and
 // only a small set of Markdown is then turned into markup. Links open outside.
+// A backslash before punctuation means the character itself (\$, \*, \_):
+// it becomes an entity, so the emphasis and link rules below pass it by.
+// Characters esc() already turned into entities (& < > " ') are not in the set.
+// Inside `code` the backslash stays, as written.
+const MD_ESCAPE = /\\([\\`*_{}\[\]()#+\-.!|~$%^=:;,/?@])/g;
 function mdInline(t) {
+  return t.split(/(`[^`]+`)/).map(part => /^`[^`]+`$/.test(part)
+    ? `<code>${part.slice(1, -1)}</code>`
+    : mdSpan(part.replace(MD_ESCAPE, (_, c) => `&#${c.charCodeAt(0)};`))).join('');
+}
+function mdSpan(t) {
   return t
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
     .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
@@ -1073,9 +1082,11 @@ function mdInline(t) {
 function md(text) {
   const lines = esc(text || '').replace(/\r/g, '').split('\n');
   const out = [];
-  let para = [], list = null, code = null;
+  // lists: the open lists, innermost last, each with the indent of its items;
+  // an item indented further than the one before opens a list inside it.
+  let para = [], lists = [], code = null;
   const flushPara = () => { if (para.length) { out.push(`<p>${mdInline(para.join('<br>'))}</p>`); para = []; } };
-  const flushList = () => { if (list) { out.push(`<${list.tag}>${list.items.map(x => `<li>${mdInline(x)}</li>`).join('')}</${list.tag}>`); list = null; } };
+  const flushList = () => { while (lists.length) out.push(`</li></${lists.pop().tag}>`); };
   for (const line of lines) {
     if (code !== null) {
       if (/^\s*```/.test(line)) { out.push(`<pre>${code.join('\n')}</pre>`); code = null; } else code.push(line);
@@ -1087,11 +1098,16 @@ function md(text) {
       flushPara(); flushList();
       const lvl = Math.min(m[1].length + 2, 6);
       out.push(`<h${lvl}>${mdInline(m[2])}</h${lvl}>`);
-    } else if ((m = line.match(/^\s*([-*+]|\d+[.)])\s+(.*)$/))) {
+    } else if ((m = line.match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/))) {
       flushPara();
-      const tag = /\d/.test(m[1]) ? 'ol' : 'ul';
-      if (!list || list.tag !== tag) { flushList(); list = { tag, items: [] }; }
-      list.items.push(m[2].replace(/^#{1,6}\s+/, ''));   // a heading written inside a list item
+      const tag = /\d/.test(m[2]) ? 'ol' : 'ul';
+      const indent = m[1].replace(/\t/g, '    ').length;
+      while (lists.length > 1 && indent < lists[lists.length - 1].indent) out.push(`</li></${lists.pop().tag}>`);
+      const top = lists[lists.length - 1];
+      if (!top || indent > top.indent + 1) { out.push(`<${tag}><li>`); lists.push({ tag, indent }); }
+      else if (top.tag === tag) out.push('</li><li>');
+      else { out.push(`</li></${lists.pop().tag}>`, `<${tag}><li>`); lists.push({ tag, indent }); }
+      out.push(mdInline(m[3].replace(/^#{1,6}\s+/, '')));   // a heading written inside a list item
     } else if (/^\s*\|.*\|\s*$/.test(line)) {
       flushPara(); flushList();
       if (!/^\s*\|[\s:|-]+\|\s*$/.test(line)) out.push(`<div class="mdrow">${line.trim().replace(/^\||\|$/g, '').split('|').map(c => `<span>${mdInline(c.trim())}</span>`).join('')}</div>`);

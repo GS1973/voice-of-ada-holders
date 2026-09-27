@@ -14,10 +14,12 @@ Static: plain HTML, one stylesheet (`styles.css`), one script for the pages (`ap
 for signing (`sign.js`, with `vendor/blake2b.js`, blakejs 1.2.1, MIT). No build step, no
 backend, no cookies.
 
-- `app.js` holds every visible text in English and Spanish (`TEXT.en`, `TEXT.es`), so both
-  languages always carry the same content.
+- `app.js` holds every visible text in English, Spanish and Japanese (`TEXT.en`, `TEXT.es`,
+  `TEXT.ja`), so all three languages always carry the same content.
 - `sign.js` builds the answer transaction itself (the CBOR is written out, no library), has the
   wallet sign it over CIP-30, checks that the stake key signed, and has the wallet submit it.
+  Only the wallets tested with a real transaction are offered: Eternl, Gero, Lace, Typhon and
+  VESPR.
   It is on while `data.json` says `answers_open`; otherwise only in a browser switched on with
   `?sign=on` (`?sign=off` again).
 - No inline script or style anywhere: buttons are wired in `app.js` (`data-act`), bar widths are
@@ -37,9 +39,10 @@ backend, no cookies.
    from cardano-db-sync in one REPEATABLE READ transaction (read-only role).
 2. `anchors.py`: each action's anchored document, kept only if its bytes hash to the value on
    chain; title and abstract come from it.
-3. `translate.py`: Spanish machine translation of those texts with a local model (Qwen3-4B,
-   int8, on ctranslate2), cached per document hash and marked on the site as machine
-   translation.
+3. `translate.py`: Spanish and Japanese machine translation of those texts with a local model
+   (Qwen3-8B on ctranslate2; the languages are those in `TVOAH_LANGS`), cached per document
+   hash and marked on the site as machine translation. A translation that people reviewed,
+   in `generator/reviewed/<lang>.json`, takes the place of the model's.
 
 `generator/run_tally.sh ada` makes the ADA snapshot (ADA per stake key) once per epoch.
 
@@ -62,7 +65,7 @@ What it needs:
 
 Run against a published tally (`data.json` from the site):
 
-- `DATA=data.json node tools/render.test.js en|es`: every page drawn in one language, the
+- `DATA=data.json node tools/render.test.js en|es|ja`: every page drawn in one language, the
   basket, the wallet states, the disclaimer with and without a source address.
 - `DATA=data.json node tools/sign.test.js out.json && python3 tools/sign_check.py out.json`:
   answer transactions built and signed against a mock wallet with real ed25519 keys, then
@@ -73,6 +76,14 @@ Run against a published tally (`data.json` from the site):
 
 `tools/deploy_site.sh` is the maintainer's deploy: the committed pages to the web server,
 checked by hash.
+
+## Essential Contributors
+
+- **Cerkoryn** ([github.com/Cerkoryn](https://github.com/Cerkoryn)): co-author of
+  [CIP-179, On-Chain Surveys and Polls](https://github.com/cardano-foundation/CIPs/tree/master/CIP-0179).
+  The answer record of this site follows CIP-179 in three points: the proof through
+  `required_signers`, the rule that the latest answer counts, and several answers in one
+  transaction.
 
 ## License
 
