@@ -92,7 +92,7 @@ const TEXT = {
     basketNotYet: 'Signing is switched off for the moment. Your answers are kept in this browser until it is on again.',
     signTestOn: 'Signing is switched on in this browser only (?sign=off switches it off).',
     chooseWallet: 'Sign with your wallet',
-    noWallet: 'No Cardano wallet found in this browser. Install one, or open this page in your wallet\'s own browser.',
+    noWallet: 'No supported Cardano wallet found in this browser. This site works with Eternl, Gero, Lace, Typhon and VESPR. Install one, or open this page in your wallet\'s own browser.',
     signStep: { connect: 'Connecting to your wallet…', build: 'Building the transaction…', sign: 'Waiting for your signature in the wallet…', submit: 'Sending it to the chain…' },
     signDone: (n, link) => `Sent. ${n === 1 ? 'Your answer is' : `Your ${n} answers are`} in transaction ${link}. It counts in the first tally after it is in a block, usually within a quarter of an hour.`,
     signErr: {
@@ -154,7 +154,7 @@ const TEXT = {
         ['Not an official vote', 'An answer does not change the outcome of any governance action; only DReps, stake pools and the Constitutional Committee vote. It makes visible what ADA holders think. Every answer is linked to a stake key, so anyone can set it next to that wallet\'s DRep and how that DRep voted.'],
       ],
       wallets: 'Supported wallets',
-      walletsText: 'Your wallet must be able to sign with your stake key. Tested with a real transaction: Eternl, Gero, Lace, Typhon and VESPR. If a wallet cannot sign with the stake key, the site says so and nothing is sent.',
+      walletsText: 'Your wallet must be able to sign with your stake key. Supported, each tested with a real transaction: Eternl, Gero, Lace, Typhon and VESPR; other wallets are not offered. If a wallet cannot sign with the stake key, the site says so and nothing is sent.',
       safe: 'Before you sign',
       safeRules: [
         ['Only the fee leaves', 'Your wallet should show about 0.18 ADA leaving as the fee, and everything else coming back to your own address. If it shows any other amount leaving, do not sign.'],
@@ -294,7 +294,7 @@ const TEXT = {
     basketNotYet: 'Firmar está desactivado por el momento. Tus respuestas se guardan en este navegador hasta que vuelva a estar activo.',
     signTestOn: 'La firma está activada solo en este navegador (?sign=off la desactiva).',
     chooseWallet: 'Firmar con tu billetera',
-    noWallet: 'No se encontró ninguna billetera de Cardano en este navegador. Instala una, o abre esta página en el navegador de tu billetera.',
+    noWallet: 'No se encontró en este navegador ninguna billetera de Cardano compatible. Este sitio funciona con Eternl, Gero, Lace, Typhon y VESPR. Instala una, o abre esta página en el navegador de tu billetera.',
     signStep: { connect: 'Conectando con tu billetera…', build: 'Construyendo la transacción…', sign: 'Esperando tu firma en la billetera…', submit: 'Enviándola a la cadena…' },
     signDone: (n, link) => `Enviado. ${n === 1 ? 'Tu respuesta está' : `Tus ${n} respuestas están`} en la transacción ${link}. Cuenta en el primer recuento después de entrar en un bloque, normalmente en un cuarto de hora.`,
     signErr: {
@@ -356,7 +356,7 @@ const TEXT = {
         ['No es una votación oficial', 'Una respuesta no cambia el resultado de ninguna acción de gobernanza; solo votan los DReps, los pools de stake y el Comité Constitucional. Hace visible lo que piensan los poseedores de ADA. Cada respuesta está vinculada a una clave de stake, así que cualquiera puede compararla con el DRep de esa billetera y con cómo votó ese DRep.'],
       ],
       wallets: 'Billeteras compatibles',
-      walletsText: 'Tu billetera debe poder firmar con tu clave de stake. Probadas con una transacción real: Eternl, Gero, Lace, Typhon y VESPR. Si una billetera no puede firmar con la clave de stake, el sitio lo dice y no se envía nada.',
+      walletsText: 'Tu billetera debe poder firmar con tu clave de stake. Compatibles, cada una probada con una transacción real: Eternl, Gero, Lace, Typhon y VESPR; otras billeteras no se ofrecen. Si una billetera no puede firmar con la clave de stake, el sitio lo dice y no se envía nada.',
       safe: 'Antes de firmar',
       safeRules: [
         ['Solo sale la comisión', 'Tu billetera debe mostrar que salen unos 0,18 ADA como comisión y que todo lo demás vuelve a tu propia dirección. Si muestra que sale cualquier otra cantidad, no firmes.'],
@@ -552,7 +552,7 @@ const TEXT = {
     basketNotYet: '現在、署名は無効になっています。有効になるまで、回答はこのブラウザに保存されます。',
     signTestOn: '署名はこのブラウザでのみ有効になっています（?sign=off で無効にできます）。',
     chooseWallet: 'ウォレットで署名',
-    noWallet: 'このブラウザに Cardano ウォレットが見つかりません。ウォレットをインストールするか、ウォレット内蔵のブラウザでこのページを開いてください。',
+    noWallet: 'このブラウザに対応する Cardano ウォレットが見つかりません。このサイトは Eternl、Gero、Lace、Typhon、VESPR に対応しています。いずれかをインストールするか、ウォレット内蔵のブラウザでこのページを開いてください。',
     signStep: {
       connect: 'ウォレットに接続中…',
       build: 'トランザクションを作成中…',
@@ -649,7 +649,7 @@ const TEXT = {
         ],
       ],
       wallets: '対応ウォレット',
-      walletsText: 'ウォレットは、ステークキーで署名できる必要があります。実際のトランザクションで動作確認済み：Eternl、Gero、Lace、Typhon、VESPR。ウォレットがステークキーで署名できない場合は、サイトがそう表示し、何も送信されません。',
+      walletsText: 'ウォレットは、ステークキーで署名できる必要があります。対応ウォレット（いずれも実際のトランザクションで動作確認済み）：Eternl、Gero、Lace、Typhon、VESPR。それ以外のウォレットは表示されません。ウォレットがステークキーで署名できない場合は、サイトがそう表示し、何も送信されません。',
       safe: '署名する前に',
       safeRules: [
         [
@@ -1146,7 +1146,8 @@ async function openDoc(hash) {
 // asked again, and checked to be on the same account, when signing.
 const WALLET_KEY = 'tvoah.wallet';
 function wallet() {
-  try { const w = JSON.parse(localStorage.getItem(WALLET_KEY)); return w && /^[0-9a-f]{56}$/.test(w.stake) ? w : null; } catch (e) { return null; }
+  // A wallet remembered from before the supported list counts as not connected.
+  try { const w = JSON.parse(localStorage.getItem(WALLET_KEY)); return w && /^[0-9a-f]{56}$/.test(w.stake) && (typeof SUPPORTED === 'undefined' || SUPPORTED[w.key]) ? w : null; } catch (e) { return null; }
 }
 function disconnectWallet() {
   try { localStorage.removeItem(WALLET_KEY); } catch (e) { /* storage blocked */ }

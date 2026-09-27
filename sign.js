@@ -245,21 +245,22 @@ function buildTx({ utxos, changeAddr, stakeKeyHash, auxBytes, ttl, params }) {
 
 class SignError extends Error { constructor(key, detail) { super(key); this.key = key; this.detail = detail; } }
 
-// NuFi is left out (decided 24-09-2026): tested, it gave no outputs through
-// getUtxos() while reporting a balance, and warned it could not parse a valid
-// Conway transaction. It did sign and send in the end, through the fallbacks.
-const LEFT_OUT = /nufi/i;
+// Only the wallets tested with a real transaction are offered (decided
+// 27-09-2026), by the key each registers under window.cardano. Any other
+// wallet is not: NuFi, for one, gave no outputs through getUtxos() while
+// reporting a balance (24-09-2026).
+const SUPPORTED = { eternl: 'Eternl', gerowallet: 'Gero', lace: 'Lace', typhoncip30: 'Typhon', vespr: 'VESPR' };
 
 function wallets() {
   const c = window.cardano || {};
-  return Object.keys(c).filter(k => c[k] && typeof c[k].enable === 'function' && c[k].name)
-    .filter(k => !LEFT_OUT.test(k) && !LEFT_OUT.test(String(c[k].name)))
-    .map(k => ({ key: k, name: String(c[k].name), icon: String(c[k].icon || '') }));
+  return Object.keys(SUPPORTED).filter(k => c[k] && typeof c[k].enable === 'function')
+    .map(k => ({ key: k, name: SUPPORTED[k], icon: String(c[k].icon || '') }));
 }
 
 // Enables the wallet and reads its stake key hash: what connecting does, and
 // the first step of signing.
 async function enableWallet(walletKey) {
+  if (!SUPPORTED[walletKey]) throw new SignError('failed');
   let api;
   try { api = await window.cardano[walletKey].enable(); } catch (e) { throw new SignError('declined', e); }
   if (Number(await api.getNetworkId()) !== 1) throw new SignError('wrongNet');

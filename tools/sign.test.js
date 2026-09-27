@@ -58,7 +58,7 @@ function mockWallet({ withTokensOnly, signStake = true, extraWitness = false }) 
     },
     submitTx: async (hex) => { submitted = hex; return 'ok'; },
   };
-  window.cardano = { mock: { name: 'Mock', enable: async () => api } };
+  window.cardano = { lace: { name: 'Mock', enable: async () => api } };   // a supported key
   return { get submitted() { return submitted; }, stakeHash: S.bytesToHex(stake.hash) };
 }
 
@@ -68,7 +68,7 @@ function mockWallet({ withTokensOnly, signStake = true, extraWitness = false }) 
   for (const [name, opts] of [['ada', {}], ['tokens', { withTokensOnly: true }], ['extra-witness', { extraWitness: true }]]) {
     const w = mockWallet(opts);
     const steps = [];
-    const r = await S.signAnswers('mock', answers, data, s => steps.push(s));
+    const r = await S.signAnswers('lace', answers, data, s => steps.push(s));
     if (!w.submitted) throw new Error(name + ': nothing submitted');
     if (steps.join() !== 'connect,build,sign,submit') throw new Error(name + ': steps ' + steps);
     results.push({ case: name, tx: w.submitted, txId: r.txId, fee: String(r.fee), stake: w.stakeHash, answers });
@@ -76,7 +76,7 @@ function mockWallet({ withTokensOnly, signStake = true, extraWitness = false }) 
   }
   const bad = mockWallet({ signStake: false });
   try {
-    await S.signAnswers('mock', answers, data, () => {});
+    await S.signAnswers('lace', answers, data, () => {});
     throw new Error('signed without stake key, yet not refused');
   } catch (e) {
     if (e.key !== 'noStakeSig' || bad.submitted) throw e;
@@ -84,7 +84,7 @@ function mockWallet({ withTokensOnly, signStake = true, extraWitness = false }) 
   }
   const gone = mockWallet({});
   try {
-    await S.signAnswers('mock', [...answers, ['ab'.repeat(32) + '-0', 'yes']], data, () => {});
+    await S.signAnswers('lace', [...answers, ['ab'.repeat(32) + '-0', 'yes']], data, () => {});
     throw new Error('answer to an action not in the tally, yet not refused');
   } catch (e) {
     if (e.key !== 'closing' || gone.submitted) throw e;

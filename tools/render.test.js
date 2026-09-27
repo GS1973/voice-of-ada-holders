@@ -121,7 +121,7 @@ loc.search = '?id=' + open.id; api.renderAction(data);
 if (!/value="yes" disabled/.test(html) || !/Connect your wallet|Conecta tu billetera|ウォレットを接続してください/.test(html)) throw new Error('answering possible without a wallet');
 // A wallet registered after the action was submitted: cannot answer.
 const stake = 'ab'.repeat(28);
-store['tvoah.wallet'] = JSON.stringify({ key: 'mock', name: 'Mock', stake });
+store['tvoah.wallet'] = JSON.stringify({ key: 'lace', name: 'Lace', stake });
 api.setMine({ answers: {}, reg: open.pos + 1 });
 api.renderAction(data);
 if (!/value="yes" disabled/.test(html) || !/not registered before|no estaba registrada|登録されていなかった/.test(html)) throw new Error('ineligible wallet can answer');
