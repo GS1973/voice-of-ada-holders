@@ -46,7 +46,7 @@ const TEXT = {
     titlesMachine: 'Proposal titles are machine-translated from English.',
     groups: { 'Delegated to a DRep': 'Delegated to a DRep', 'Always abstain': 'Always abstain', 'Always no confidence': 'Always no confidence', 'No DRep chosen': 'No DRep chosen' },
     indexTitle: 'Governance actions',
-    indexLead: 'Every governance action on Cardano appears here automatically. ADA holders answer yes, no or no opinion with a transaction from their own wallet. The result is counted in wallets: one wallet, one voice. The ADA behind the answers is shown underneath as a check; it does not count. This is not an official vote: an answer does not (directly) change the outcome. It shows DReps, stake pools and everyone else what ADA holders think, on the chain. Responsible DReps and Stake Pool Operators might base their vote upon what their delegators voted here on chain.',
+    indexLead: 'Every governance action on Cardano appears here automatically. ADA holders answer yes, no or no opinion with a transaction from their own wallet. The result is counted in wallets: one wallet, one voice. The ADA behind the answers is shown underneath as a check; it does not count. This is not an official vote: an answer does not (directly) change the outcome. It shows DReps, stake pools and everyone else what ADA holders think, on the chain. Responsible DReps and Stake Pool Operators might base their vote upon what their delegators answered here on chain.',
     said: 'What the wallets answered', answered: n => `${n} wallets answered`,
     ofHolders: (n, t, p) => `${n} of ${t} wallets answered (${p})`,
     ofAda: (n, t, p) => `ADA behind them: ${n} of ${t} (${p})`,
@@ -151,7 +151,7 @@ const TEXT = {
         ['One wallet, one voice', 'The result is counted in wallets. In ADA an exchange is billions, in wallets it is one. The ADA is shown underneath as a check against fake wallets: many wallets with almost nothing behind them stand out.'],
         ['Multiple choice only', 'No free text, so there is nothing to moderate and nothing to remove.'],
         ['No verdicts', 'The site shows what holders said. It does not judge DReps.'],
-        ['Not an official vote', 'An answer does not change the outcome of any governance action; only DReps, stake pools and the Constitutional Committee vote. It makes visible what ADA holders think. Every answer is linked to a stake key, so anyone can set it next to that wallet\'s DRep and how that DRep voted.'],
+        ['Not an official vote', 'An answer does not (directly) change the outcome of any governance action; only DReps, stake pools and the Constitutional Committee vote. It makes visible what ADA holders think. Every answer is linked to a stake key, so anyone can set it next to that wallet\'s DRep and how that DRep voted.'],
       ],
       wallets: 'Supported wallets',
       walletsText: 'Your wallet must be able to sign with your stake key. Supported, each tested with a real transaction: Eternl, Gero, Lace, Typhon and VESPR; other wallets are not offered. If a wallet cannot sign with the stake key, the site says so and nothing is sent.',
@@ -166,7 +166,7 @@ const TEXT = {
     disclaimer: {
       title: 'Disclaimer',
       items: [
-        ['Not an official vote', 'The Voice of ADA Holders shows what ADA holders answer. An answer has no effect on the outcome of any governance action, and nothing on this site is legal, financial or investment advice.'],
+        ['Not an official vote', 'The Voice of ADA Holders shows what ADA holders answer. An answer has no direct effect on the outcome of any governance action, and nothing on this site is legal, financial or investment advice.'],
         ['Figures as they are', 'Every figure is read from the Cardano chain and can be recounted by anyone. We take care to count correctly, but we give no guarantee that the figures, titles, summaries or translations are complete, correct or current. Proposal documents are written by their proposers, not by us; machine translations can contain mistakes.'],
         ['Your wallet, your transaction', 'This site never holds your keys, never asks for your seed phrase, and never signs for you. You sign every transaction yourself, in your own wallet, and you pay its fee. A transaction on the chain is public and permanent; it cannot be withdrawn. Check what your wallet shows before you sign.'],
         ['Privacy', 'This site sets no cookies, uses no analytics and loads nothing from third parties. It keeps no user data: your language, your connected wallet and your unsigned answers are stored in your own browser only, and never sent to us. The server keeps a standard access log (time, page, browser type; no IP addresses), deleted after about two weeks. Your answers themselves are public on the chain.'],
@@ -248,7 +248,7 @@ const TEXT = {
     titlesMachine: 'Los títulos de las propuestas están traducidos automáticamente del inglés.',
     groups: { 'Delegated to a DRep': 'Delegada en un DRep', 'Always abstain': 'Abstención permanente', 'Always no confidence': 'Siempre sin confianza', 'No DRep chosen': 'Sin DRep elegido' },
     indexTitle: 'Acciones de gobernanza',
-    indexLead: 'Cada acción de gobernanza de Cardano aparece aquí automáticamente. Los poseedores de ADA responden sí, no o sin opinión con una transacción desde su propia billetera. El resultado se cuenta en billeteras: una billetera, una voz. El ADA detrás de las respuestas se muestra debajo como control; no cuenta. Esto no es una votación oficial: una respuesta no cambia (directamente) el resultado. Muestra a los DReps, a los pools de stake y a todos los demás lo que piensan los poseedores de ADA, en la cadena. Los DReps y operadores de pools de stake responsables podrían basar su voto en lo que sus delegadores votaron aquí, en la cadena.',
+    indexLead: 'Cada acción de gobernanza de Cardano aparece aquí automáticamente. Los poseedores de ADA responden sí, no o sin opinión con una transacción desde su propia billetera. El resultado se cuenta en billeteras: una billetera, una voz. El ADA detrás de las respuestas se muestra debajo como control; no cuenta. Esto no es una votación oficial: una respuesta no cambia (directamente) el resultado. Muestra a los DReps, a los pools de stake y a todos los demás lo que piensan los poseedores de ADA, en la cadena. Los DReps y operadores de pools de stake responsables podrían basar su voto en lo que sus delegadores respondieron aquí, en la cadena.',
     said: 'Lo que respondieron las billeteras', answered: n => `${n} billeteras respondieron`,
     ofHolders: (n, t, p) => `${n} de ${t} billeteras respondieron (${p})`,
     ofAda: (n, t, p) => `ADA detrás: ${n} de ${t} (${p})`,
@@ -353,7 +353,7 @@ const TEXT = {
         ['Una billetera, una voz', 'El resultado se cuenta en billeteras. En ADA, un exchange suma miles de millones; en billeteras, es solo una. El ADA se muestra debajo como control contra billeteras falsas: muchas billeteras con casi nada detrás llaman la atención.'],
         ['Solo opción múltiple', 'Sin texto libre, así que no hay nada que moderar ni nada que borrar.'],
         ['Sin veredictos', 'El sitio muestra lo que dijeron los poseedores. No juzga a los DReps.'],
-        ['No es una votación oficial', 'Una respuesta no cambia el resultado de ninguna acción de gobernanza; solo votan los DReps, los pools de stake y el Comité Constitucional. Hace visible lo que piensan los poseedores de ADA. Cada respuesta está vinculada a una clave de stake, así que cualquiera puede compararla con el DRep de esa billetera y con cómo votó ese DRep.'],
+        ['No es una votación oficial', 'Una respuesta no cambia (directamente) el resultado de ninguna acción de gobernanza; solo votan los DReps, los pools de stake y el Comité Constitucional. Hace visible lo que piensan los poseedores de ADA. Cada respuesta está vinculada a una clave de stake, así que cualquiera puede compararla con el DRep de esa billetera y con cómo votó ese DRep.'],
       ],
       wallets: 'Billeteras compatibles',
       walletsText: 'Tu billetera debe poder firmar con tu clave de stake. Compatibles, cada una probada con una transacción real: Eternl, Gero, Lace, Typhon y VESPR; otras billeteras no se ofrecen. Si una billetera no puede firmar con la clave de stake, el sitio lo dice y no se envía nada.',
@@ -368,7 +368,7 @@ const TEXT = {
     disclaimer: {
       title: 'Aviso legal',
       items: [
-        ['No es una votación oficial', 'The Voice of ADA Holders muestra lo que responden los poseedores de ADA. Una respuesta no tiene ningún efecto en el resultado de ninguna acción de gobernanza, y nada en este sitio es asesoramiento legal, financiero ni de inversión.'],
+        ['No es una votación oficial', 'The Voice of ADA Holders muestra lo que responden los poseedores de ADA. Una respuesta no tiene ningún efecto directo en el resultado de ninguna acción de gobernanza, y nada en este sitio es asesoramiento legal, financiero ni de inversión.'],
         ['Las cifras, tal como son', 'Cada cifra se lee de la cadena de Cardano y cualquiera puede recontarla. Ponemos cuidado en contar bien, pero no garantizamos que las cifras, los títulos, los resúmenes o las traducciones sean completos, correctos o actuales. Los documentos de las propuestas los escriben sus autores, no nosotros; las traducciones automáticas pueden contener errores.'],
         ['Tu billetera, tu transacción', 'Este sitio nunca guarda tus claves, nunca te pide tu frase semilla y nunca firma por ti. Tú firmas cada transacción en tu propia billetera y pagas su comisión. Una transacción en la cadena es pública y permanente; no se puede retirar. Comprueba lo que muestra tu billetera antes de firmar.'],
         ['Privacidad', 'Este sitio no usa cookies ni analítica, y no carga nada de terceros. No guarda datos de usuarios: tu idioma, tu billetera conectada y tus respuestas sin firmar se guardan solo en tu propio navegador y nunca se nos envían. El servidor guarda un registro de accesos normal (hora, página, tipo de navegador; sin direcciones IP), que se borra al cabo de unas dos semanas. Tus respuestas en sí son públicas en la cadena.'],
@@ -645,7 +645,7 @@ const TEXT = {
         ['評価はしない', 'このサイトは保有者の回答を示すだけで、DRep を評価しません。'],
         [
           '公式の投票ではありません',
-          '回答によって、ガバナンスアクションの結果が変わることはありません。投票するのは DRep、ステークプール、憲法委員会だけです。このサイトは、ADA 保有者の考えを見える形にします。すべての回答はステークキーに結びついているので、誰でも、そのウォレットの DRep や、その DRep の投票と並べて比べることができます。',
+          '回答によって、ガバナンスアクションの結果が（直接）変わることはありません。投票するのは DRep、ステークプール、憲法委員会だけです。このサイトは、ADA 保有者の考えを見える形にします。すべての回答はステークキーに結びついているので、誰でも、そのウォレットの DRep や、その DRep の投票と並べて比べることができます。',
         ],
       ],
       wallets: '対応ウォレット',
@@ -666,7 +666,7 @@ const TEXT = {
       items: [
         [
           '公式の投票ではありません',
-          'The Voice of ADA Holders は、ADA 保有者の回答を示すものです。回答はどのガバナンスアクションの結果にも影響せず、このサイトの内容は、法律、財務、投資に関する助言ではありません。',
+          'The Voice of ADA Holders は、ADA 保有者の回答を示すものです。回答はどのガバナンスアクションの結果にも直接影響せず、このサイトの内容は、法律、財務、投資に関する助言ではありません。',
         ],
         [
           '数値はありのまま',
