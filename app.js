@@ -197,7 +197,7 @@ const TEXT = {
       tba: 'The code is not public yet.',
       published: u => `The code is public: ${u}`,
       formatTitle: 'The record',
-      format: 'Every answer is a transaction with this under metadata label 1695: <code>{ 0: 1, 1: [0, stake key hash], 2: [ [[action tx hash, index], choice], … ] }</code>, where the choice is 0 for no, 1 for yes and 2 for no opinion, as in the ledger. The stake key hash must be in the transaction\'s required signers, so the chain itself checks that the wallet signed. An answer counts if the action was submitted before it, if it is in a block before the action closes, and if the stake key was registered from before the action until it closes. Per action and stake key, only the latest answer counts.',
+      format: 'The format is proposed as a Cardano standard: <a href="https://github.com/cardano-foundation/CIPs/pull/1277" target="_blank" rel="noopener noreferrer">CIP-0204</a>. Every answer is a transaction with this under metadata label 1695: <code>{ 0: 1, 1: [0, stake key hash], 2: [ [[action tx hash, index], choice], … ] }</code>, where the choice is 0 for no, 1 for yes and 2 for no opinion, as in the ledger. The stake key hash must be in the transaction\'s required signers, so the chain itself checks that the wallet signed. An answer counts if the action was submitted before it, if it is in a block before the action closes, and if the stake key was registered from before the action until it closes. Per action and stake key, only the latest answer counts.',
       filesTitle: 'Published with every tally',
       files: [
         ['data.json', 'The tally: every action, its closing time and the counts'],
@@ -399,7 +399,7 @@ const TEXT = {
       tba: 'El código aún no es público.',
       published: u => `El código es público: ${u}`,
       formatTitle: 'El registro',
-      format: 'Cada respuesta es una transacción con esto bajo la etiqueta de metadatos 1695: <code>{ 0: 1, 1: [0, hash de la clave de stake], 2: [ [[hash de la tx de la acción, índice], elección], … ] }</code>, donde la elección es 0 para no, 1 para sí y 2 para sin opinión, como en el ledger. El hash de la clave de stake debe estar entre los firmantes requeridos de la transacción, así que la propia cadena comprueba que la billetera firmó. Una respuesta cuenta si la acción se presentó antes, si está en un bloque anterior al cierre de la acción, y si la clave de stake estuvo registrada desde antes de la acción hasta su cierre. Por acción y clave de stake, solo cuenta la respuesta más reciente.',
+      format: 'El formato está propuesto como estándar de Cardano: <a href="https://github.com/cardano-foundation/CIPs/pull/1277" target="_blank" rel="noopener noreferrer">CIP-0204</a>. Cada respuesta es una transacción con esto bajo la etiqueta de metadatos 1695: <code>{ 0: 1, 1: [0, hash de la clave de stake], 2: [ [[hash de la tx de la acción, índice], elección], … ] }</code>, donde la elección es 0 para no, 1 para sí y 2 para sin opinión, como en el ledger. El hash de la clave de stake debe estar entre los firmantes requeridos de la transacción, así que la propia cadena comprueba que la billetera firmó. Una respuesta cuenta si la acción se presentó antes, si está en un bloque anterior al cierre de la acción, y si la clave de stake estuvo registrada desde antes de la acción hasta su cierre. Por acción y clave de stake, solo cuenta la respuesta más reciente.',
       filesTitle: 'Publicado con cada recuento',
       files: [
         ['data.json', 'El recuento: cada acción, su hora de cierre y las cifras'],
@@ -712,7 +712,7 @@ const TEXT = {
       tba: 'コードはまだ公開されていません。',
       published: u => `コードは公開されています：${u}`,
       formatTitle: '記録の形式',
-      format: 'すべての回答は、メタデータラベル 1695 に次の内容を持つトランザクションです：<code>{ 0: 1, 1: [0, ステークキーハッシュ], 2: [ [[アクションの tx ハッシュ, インデックス], 選択], … ] }</code>。選択は台帳と同じく、0 が反対、1 が賛成、2 が意見なしです。ステークキーハッシュは、トランザクションの必須署名者（required signers）に含まれている必要があるため、ウォレットが署名したことをチェーン自体が検証します。回答が集計されるのは、アクションが回答より前に提出されていること、回答がアクションの締切前のブロックに含まれていること、ステークキーがアクション以前から締切まで登録されていること、のすべてを満たす場合です。アクションとステークキーごとに、最新の回答だけが数えられます。',
+      format: 'この形式は Cardano の標準として <a href="https://github.com/cardano-foundation/CIPs/pull/1277" target="_blank" rel="noopener noreferrer">CIP-0204</a> で提案されています。すべての回答は、メタデータラベル 1695 に次の内容を持つトランザクションです：<code>{ 0: 1, 1: [0, ステークキーハッシュ], 2: [ [[アクションの tx ハッシュ, インデックス], 選択], … ] }</code>。選択は台帳と同じく、0 が反対、1 が賛成、2 が意見なしです。ステークキーハッシュは、トランザクションの必須署名者（required signers）に含まれている必要があるため、ウォレットが署名したことをチェーン自体が検証します。回答が集計されるのは、アクションが回答より前に提出されていること、回答がアクションの締切前のブロックに含まれていること、ステークキーがアクション以前から締切まで登録されていること、のすべてを満たす場合です。アクションとステークキーごとに、最新の回答だけが数えられます。',
       filesTitle: '集計ごとに公開するファイル',
       files: [
         ['data.json', '集計：すべてのアクション、その締切時刻、数値'],

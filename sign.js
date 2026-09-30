@@ -1,7 +1,7 @@
 // The Voice of ADA Holders: signing the answers in the basket.
 //
 // Builds one transaction carrying every answer under metadata label 1695, in
-// the record format of the CIP draft (cip/README.md), asks the wallet to sign
+// the record format of CIP-0204 (cip/README.md), asks the wallet to sign
 // it over CIP-30, and hands it back to the wallet to submit. No library: the
 // transaction is a handful of CBOR fields, written here so that anyone can read
 // what is signed. blake2b comes from vendor/blake2b.js.
