@@ -4,8 +4,8 @@ The site at https://voiceofadaholders.com and the program that counts its answer
 
 ADA holders answer yes, no or no opinion on every Cardano governance action, each with a
 transaction from their own wallet that carries the answer under metadata label `1695`. The
-record format and the counting rules are a CIP draft, [`cip/README.md`](cip/README.md)
-(submitted as cardano-foundation/CIPs#1277). Everything the site shows can be recounted from
+record format and the counting rules are proposed as CIP-0204, [`cip/README.md`](cip/README.md)
+(cardano-foundation/CIPs#1277). Everything the site shows can be recounted from
 the chain with the generator in this repository.
 
 ## The site
