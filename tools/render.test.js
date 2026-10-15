@@ -31,7 +31,7 @@ global.document = {
 };
 const loc = { search: '', pathname: '/', hash: '' };
 global.location = loc;
-const api = new Function(src + `; return { renderIndex, renderAction, renderContact, renderDisclaimer, renderRecount, drawTicker, pruneBasket, drawBasket, basket, openBasket,
+const api = new Function(src + `; return { renderIndex, renderAction, renderContact, renderDisclaimer, renderRecount, drawTicker, tickerFill, pruneBasket, drawBasket, basket, openBasket,
   setData: d => { DATA = d; }, setMine: m => { MINE = m; } };`)();
 
 // Every language carries every text of the English one, of the same kind, and nothing else.
@@ -80,6 +80,12 @@ if ((bodyHtml.match(/class="ticker-alert"/g) || []).length !== 2 || (bodyHtml.ma
 bodyHtml = '';
 api.drawTicker({ ...data, news: [] });
 if (/ticker/.test(bodyHtml)) throw new Error('ticker drawn without news');
+// A run is filled until it is a quarter wider than its window; a run that is
+// wide enough already, or not measured yet, is left as it is.
+for (const [run, win, more] of [[200, 1200, 7], [300, 1000, 4], [1000, 1000, 1], [1250, 1000, 0], [1500, 1200, 0], [0, 1200, 0]]) {
+  if (api.tickerFill(run, win) !== more) throw new Error(`ticker fill wrong for a run of ${run} in ${win}`);
+  if (run && (more + 1) * run < 1.25 * win) throw new Error(`filled run of ${run} too narrow for a window of ${win}`);
+}
 console.log(`[${lang}] ticker ok`);
 // Disclaimer: Spanish law; the open-source line and the recount page's
 // "published" only once SOURCE_URL is filled in, and then both.

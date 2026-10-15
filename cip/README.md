@@ -218,6 +218,24 @@ its answer again; the last one before the closing time counts.
 
 ## Rationale: How does this CIP achieve its goals?
 
+**A record of opinion, not a vote.** An answer is transaction metadata and
+nothing else. It does not change the outcome of any governance action: only
+DReps, stake pool operators and the Constitutional Committee vote, and the
+ledger does not read these records. This CIP proposes no change to the ledger,
+to the node or to the governance rules, and it is not meant as a step towards
+having the ledger count holders. Answers are counted off chain, by any tool
+that follows the rules in this document.
+
+What the record gives is a public and lasting view of what holders themselves
+answered while an action was open. Any registered stake credential can answer,
+whether it delegates its vote to a DRep, to a predefined option, or to nobody,
+so holders who have no say in the official vote can still be heard. Anyone can
+recount the answers from the chain. A DRep or a stake pool operator can see
+what its own delegators answered, a proposer can see how an action is
+received, a wallet or explorer can show the answers next to the votes, and
+anyone can compare, action by action, what holders answered with how DReps,
+stake pools and the Constitutional Committee voted.
+
 **No survey, no owner.** Every governance action is a question by itself.
 Nobody decides which actions holders may answer on, and nobody can withdraw a
 question.
@@ -296,13 +314,15 @@ could be folded into it.
 
 ### Acceptance Criteria
 
-- [ ] The metadata label is registered in CIP-10.
-- [x] A tally implementation reads and counts records by the rules above, and
-      its code is public: https://github.com/GS1973/voice-of-ada-holders
-      (Apache-2.0).
+- [x] The metadata label is registered in CIP-0010.
+- [ ] Three independent tally implementations read and count records by the
+      rules above. The first is public:
+      https://github.com/GS1973/voice-of-ada-holders (Apache-2.0).
 - [x] Wallets from at least two different vendors have been shown to sign such
       a transaction on mainnet: Eternl, Gero, Lace, Typhon and VESPR, each with
       a real transaction on 2026-09-24 (listed in the Appendix).
+- [ ] At least one mainstream wallet can prepare and submit an answer
+      transaction itself, without the user or a site preparing the metadata.
 
 ### Implementation Plan
 
@@ -312,7 +332,7 @@ could be folded into it.
       the chain. Live on mainnet since 2026-09-25.
 - [x] Publish the code of the site and of the tally:
       https://github.com/GS1973/voice-of-ada-holders, since 2026-09-25.
-- [ ] Register label `1695` in CIP-10 (in the pull request of this CIP).
+- [x] Register label `1695` in CIP-0010 (in the pull request of this CIP).
 
 ## Appendix
 

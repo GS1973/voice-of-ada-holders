@@ -1444,6 +1444,14 @@ function tickerItems(data) {
     return a ? `<a${cls} href="/action?id=${encodeURIComponent(a.id)}">${text}</a>` : `<span${cls}>${text}</span>`;
   }).filter(Boolean);
 }
+// How many more copies a run needs to be wider than its window. With one or
+// two items the run is narrower than the screen: looped as it is, it would
+// creep a little and jump back, with the rest of the bar empty. A quarter of
+// the window is kept as margin: the widths are measured before the web font
+// has loaded, and the text can come out narrower once it has.
+function tickerFill(runWidth, windowWidth) {
+  return runWidth > 0 ? Math.max(0, Math.ceil(1.25 * windowWidth / runWidth) - 1) : 0;
+}
 function drawTicker(data) {
   document.querySelector('.ticker')?.remove();
   const items = data ? tickerItems(data) : [];
@@ -1458,9 +1466,29 @@ function drawTicker(data) {
         <div class="ticker-run">${run}</div><div class="ticker-run" aria-hidden="true">${copy}</div>
       </div></div>
     </div>`);
-  // About 60 pixels a second, whatever the length.
   const first = document.querySelector('.ticker-run'), track = document.querySelector('.ticker-track');
+  const win = document.querySelector('.ticker-window');
+  // A short run is filled with copies of itself, hidden from screen readers and
+  // the tab key like the second run. Not for readers who asked for less motion:
+  // their ticker stands still and shows each item once.
+  const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (first && win && !still) {
+    const more = `<span class="ticker-fill" aria-hidden="true">${copy}</span>`.repeat(tickerFill(first.scrollWidth, win.clientWidth));
+    if (more) document.querySelectorAll('.ticker-run').forEach(r => r.insertAdjacentHTML('beforeend', more));
+  }
+  // About 60 pixels a second, whatever the length.
   if (first && track) track.style.animationDuration = Math.max(20, Math.round(first.scrollWidth / 60)) + 's';
+}
+// A wider window can make a filled run too short again. Only the width counts:
+// on a phone the height changes with every scroll, and the ticker must not restart then.
+if (typeof window !== 'undefined' && window.addEventListener) {
+  let width = window.innerWidth, timer;
+  window.addEventListener('resize', () => {
+    if (window.innerWidth === width) return;
+    width = window.innerWidth;
+    clearTimeout(timer);
+    timer = setTimeout(() => drawTicker(DATA), 250);
+  });
 }
 
 function footer() {
